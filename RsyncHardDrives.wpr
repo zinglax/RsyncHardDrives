@@ -4,4 +4,5 @@
 # Wing IDE project file                                          #
 ##################################################################
 [project attributes]
+proj.file-list = [loc('synchronize.py')]
 proj.file-type = 'shared'
