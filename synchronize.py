@@ -4,10 +4,14 @@ from configobj import ConfigObj
 import twill.commands as tc
 import sys
 import getpass
+import os
+import time
 
 # Gets Information from .ini file
 config = ConfigObj('hard_drive_roles.ini')
 hard_drives = config['hard_drive']
+HardDriveSyncTool = config['paths']["HardDriveSyncTool"]
+GateFusionProject = config['paths']['GateFusionProject']
 
 # Alert email
 to_email = "dylanzingler@gmail.com"
@@ -110,9 +114,48 @@ def set_drive_roles(group_letter):
             print "Drive: " + key + " is set to: " + hard_drives[key][0]
     
     
-def update_wiki(): # TODO
+def update_wiki(path, folder_name): # TODO
     ''' Updates the wiki page with each of the drives information and file info'''
-    pass
+    
+    # Gets files and directories for current path
+    files = os.walk(path).next()[2]
+    directories = os.walk(path).next()[1]
+        
+    body_string = ""
+    title = "= " + folder_name + " =\n"
+
+    # Create Files Table
+    file_table_header = "|| NAME || SIZE || MODIFIED DATE || PATH || NOTES ||"
+    file_table_format = "|| %s || %s || %s || %s || %s ||" 
+    file_table = "=== Files ===\n" + file_table_header
+    for f in files:
+        info = os.stat(path + '/' + f)
+        size = str(info.st_size) + " Bytes"
+        modified_date = time.ctime(info.st_mtime)
+        full_path = path + '/' + f
+        file_table += '\n' + file_table_format % (f, size, modified_date, full_path, "Nothing yet")
+
+    # Creates Directories Table
+    directory_table_header = "|| NAME || SIZE || MODIFIED DATE || PATH || NOTES ||"
+    directory_table_format = "|| %s || %s || %s || %s || %s ||" 
+    directory_table = "=== Directories ===\n" + directory_table_header
+    for d in directories:
+        info = os.stat(path + '/' + d)
+        size = str(info.st_size) + " Bytes"
+        modified_date = time.ctime(info.st_mtime)
+        full_path = path + '/' + d
+        directory_table += '\n' + file_table_format % (d, size, modified_date, full_path, "Nothing yet")
+
+
+    body_string += title + file_table + "\n" + directory_table
+    
+    ## Create Wikipage 
+    # create_wiki_page(username, password, body_string, wiki_page_name, project_name)
+    print body_string
+
+    ## Recurse Down to the next level of wiki pages
+    #for d in directories:
+        #update_wiki(path + '/' + d, d)
 
 
 #----------------------------------------------------------------------
@@ -127,36 +170,45 @@ def get_user_info():
     return username, password
 
 #----------------------------------------------------------------------
-def wiki_login(username, password):
+def wiki_login(username, password, trac_url):
     """
     logs in to the wiki given the arguments username and password.
     """    
-    tc.add_auth('Trac', Gatelink_project_path, 
+    tc.add_auth("Trac", trac_url, 
                 '%s' % username, '%s' % password)
-    tc.go(Gatelink_project_path + '/login')
+    tc.go(trac_url + '/login')
+    tc.showforms()
+    tc.show()
+    
 
 #----------------------------------------------------------------------
-def create_wiki_page(username, password, body_string, wiki_page_name):
+def create_wiki_page(username, password, body_string, wiki_page_name, project_name):
     """
     Creates a wiki page with the content specified by the paramater
     'data_string' with the name specified by 'wiki_page_name'
     """
-
-    wiki_login(username, password)
+    wiki_login(username, password, project_name)
     
-    #should specify where page should be located
-    home = Gatelink_project_path + '/wiki'
+    # Generating URL for new Page
     edit = '?action=edit'
     slash = '/'
-    newpage = home + slash + wiki_page_name + edit    
+    newpage = wiki_page_name + edit    
 
-    #specifies the page main page that you want the list of customers on   
+    # Navigates to page Via Twill
     tc.go(newpage)
     
-    #writes to and submits data to the wikipage that was created
+    # Enters bodystring and submits the new page
     tc.showforms()
-    tc.fv('2','text', body_string)
+    tc.show()
+    tc.fv('','text', body_string)
     tc.submit('11')  
+
+def walking_files(directory):
+    for root, dirs, files in os.walk(directory, topdown=False):
+        for name in files:
+            print(os.path.join(root, name))
+        for name in dirs:
+            print(os.path.join(root, name))    
 
 def send_email(): # TODO
     import smtplib
@@ -188,6 +240,11 @@ def send_email(): # TODO
 
 if __name__=="__main__":
     
-    send_email()
+    path = "/media/dylan/GrpADrv1"
     
+    username, password = get_user_info()
+    create_wiki_page(username, password, "THiS IS JUST A TEST", 
+                    HardDriveSyncTool + '/' + 'test', 
+                    GateFusionProject)
     
+    #update_wiki(path, "GrpADrv1") 
