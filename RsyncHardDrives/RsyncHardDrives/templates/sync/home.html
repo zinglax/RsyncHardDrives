@@ -1,0 +1,48 @@
+{% extends "sync/base.html" %}
+{% block content %}
+{% load staticfiles %}
+
+<div data-role="content" data-theme="{{ theme }}" class="ui-body ui-corner-all ui-overlay-shadow">
+
+<h1>Mounted Hard Drives</h1>
+<ul data-role="listview" data-inset="true">
+{% if mounted_drives %}
+{% for d in mounted_drives %}
+<li>{{ d.0 }}
+
+<p class="ui-li-aside">Role: <strong>{{ d.1}}</strong> | Group: <strong>{{ d.2 }}</strong></p>
+</li>
+{% endfor %}
+</ul>
+{% else %}
+<h3>There are not drives currently mounted</h3>
+{% endif %}
+
+
+<h1>Hard Drives Being Managed</h1>
+<h2>Group A</h2>
+<ul data-role="listview" data-inset="true">
+{% for d in hard_drives %}
+{% if d.2 == 'A' %}
+<li>{{ d.0 }}
+<p class="ui-li-aside">Role: <strong>{{ d.1}}</strong> | Group: <strong>{{ d.2 }}</strong></p>
+</li>
+{% endif %}
+{% endfor %}
+</ul>
+
+<h2>Group B</h2>
+<ul data-role="listview" data-inset="true">
+{% for d in hard_drives %}
+{% if d.2 == 'B' %}
+<li>{{ d.0 }}
+<p class="ui-li-aside">Role: <strong>{{ d.1}}</strong> | Group: <strong>{{ d.2 }}</strong></p>
+</li>
+{% endif %}
+{% endfor %}
+</ul>
+
+
+
+</div>
+{% endblock %}
