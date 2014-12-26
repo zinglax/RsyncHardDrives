@@ -1,7 +1,7 @@
 import subprocess
 import smtplib
 from configobj import ConfigObj
-import twill.commands as tc
+#import twill.commands as tc
 import sys
 import getpass
 import os
@@ -37,14 +37,19 @@ def get_mounted_drives():
             mounted_drives.append(key)
     return mounted_drives, unmounted_drives
 
+def get_drive_role(drive):
+    return hard_drives[drive][0]
+
+def get_drive_group(drive):
+    return hard_drives[drive][2]
+    
+
 def check_readme_files(): # TODO
     ''' checks which files have and do not have a README.txt associated with them.'''
     pass
 
-def synchronize_hard_drives(): 
-    ''' synchronizes hard drives using rsync'''
-    primary_drive = "GrpADrv1"
-    secondary_drive = "GrpADrv2"
+def synchronize_hard_drives(primary_drive, secondary_drive): 
+    ''' synchronizes hard drives using rsync'''    
     
     # Check that drives are mounted 
     mounted = get_mounted_drives()[0]
@@ -120,42 +125,48 @@ def update_wiki(path, folder_name): # TODO
     # Gets files and directories for current path
     files = os.walk(path).next()[2]
     directories = os.walk(path).next()[1]
-        
-    body_string = ""
-    title = "= " + folder_name + " =\n"
+            
+    body_string = "= " + folder_name + " =\n"
 
     # Create Files Table
-    file_table_header = "|| NAME || SIZE || MODIFIED DATE || PATH || NOTES ||"
-    file_table_format = "|| %s || %s || %s || %s || %s ||" 
-    file_table = "=== Files ===\n" + file_table_header
-    for f in files:
-        info = os.stat(path + '/' + f)
-        size = str(info.st_size) + " Bytes"
-        modified_date = time.ctime(info.st_mtime)
-        full_path = path + '/' + f
-        file_table += '\n' + file_table_format % (f, size, modified_date, full_path, "Nothing yet")
+    if not len(files) == 0:
+        file_table_header = "|| NAME || SIZE || MODIFIED DATE || PATH || NOTES ||"
+        file_table_format = "|| %s || %s || %s || %s || %s ||" 
+        file_table = "=== Files ===\n" + file_table_header
+        for f in files:
+            info = os.stat(path + '/' + f)
+            size = str(info.st_size) + " Bytes"
+            modified_date = time.ctime(info.st_mtime)
+            full_path = path + '/' + f
+            file_table += '\n' + file_table_format % (f, size, modified_date, full_path, "Nothing yet")
+            
+        body_string += file_table
+    else:
+            body_string += "\n=== No Files in this Folder ==="    
 
     # Creates Directories Table
-    directory_table_header = "|| NAME || SIZE || MODIFIED DATE || PATH || NOTES ||"
-    directory_table_format = "|| %s || %s || %s || %s || %s ||" 
-    directory_table = "=== Directories ===\n" + directory_table_header
-    for d in directories:
-        info = os.stat(path + '/' + d)
-        size = str(info.st_size) + " Bytes"
-        modified_date = time.ctime(info.st_mtime)
-        full_path = path + '/' + d
-        directory_table += '\n' + file_table_format % (d, size, modified_date, full_path, "Nothing yet")
-
-
-    body_string += title + file_table + "\n" + directory_table
-    
+    if not len(directories) == 0:
+        directory_table_header = "|| NAME || SIZE || MODIFIED DATE || PATH || NOTES ||"
+        directory_table_format = "|| %s || %s || %s || %s || %s ||" 
+        directory_table = "=== Directories ===\n" + directory_table_header
+        for d in directories:
+            info = os.stat(path + '/' + d)
+            size = str(info.st_size) + " Bytes"
+            modified_date = time.ctime(info.st_mtime)
+            full_path = path + '/' + d
+            directory_table += '\n' + file_table_format % (d, size, modified_date, full_path, "Nothing yet")
+        
+        body_string += "\n" + directory_table
+    else:
+        body_string += "\n=== No Directories in this Folder ==="
+        
     ## Create Wikipage 
     # create_wiki_page(username, password, body_string, wiki_page_name, project_name)
     print body_string
 
-    ## Recurse Down to the next level of wiki pages
-    #for d in directories:
-        #update_wiki(path + '/' + d, d)
+    # Recurse Down to the next level of wiki pages
+    for d in directories:
+        update_wiki(path + '/' + d, d)
 
 
 #----------------------------------------------------------------------
@@ -239,12 +250,13 @@ def send_email(): # TODO
 
 
 if __name__=="__main__":
+    pass
+
+    #path = "/media/dylan/GrpADrv1"
     
-    path = "/media/dylan/GrpADrv1"
-    
-    username, password = get_user_info()
-    create_wiki_page(username, password, "THiS IS JUST A TEST", 
-                    HardDriveSyncTool + '/' + 'test', 
-                    GateFusionProject)
+    #username, password = get_user_info()
+    #create_wiki_page(username, password, "THiS IS JUST A TEST", 
+                    #HardDriveSyncTool + '/' + 'test', 
+                    #GateFusionProject)
     
     #update_wiki(path, "GrpADrv1") 
