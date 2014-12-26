@@ -15,7 +15,7 @@
 {% endfor %}
 </ul>
 {% else %}
-<h3>There are not drives currently mounted</h3>
+<h3>There are no drives currently mounted</h3>
 {% endif %}
 
 
@@ -31,6 +31,40 @@
 {% endfor %}
 </ul>
 
+<a href="#A-Role-Change" data-rel="popup" data-position-to="window" class="ui-btn ui-corner-all ui-shadow ui-btn-inline ui-icon-edit ui-btn-icon-left ui-btn-a" data-transition="turn">Change Drive Roles</a>
+<div data-role="popup" id="A-Role-Change" data-theme="a" class="ui-corner-all">
+    <form>
+        <div style="padding:10px 20px;">
+            <h3>Assign a Role to a Drive</h3>
+            <div class="ui-field-contain">
+                <label for="select-native-1">Primary:</label>
+                <select name="A-Primary" id="select-native-1">
+                    <option value="GrpADrv1">GrpADrv1</option>
+                    <option value="GrpADrv2">GrpADrv2</option>
+                    <option value="GrpADrv3">GrpADrv3</option>
+                </select>
+                <label for="select-native-1">Secondary:</label>
+                <select name="A-Secondary" id="select-native-1">
+                    <option value="GrpADrv1">GrpADrv1</option>
+                    <option value="GrpADrv2">GrpADrv2</option>
+                    <option value="GrpADrv3">GrpADrv3</option>
+                </select>
+                <label for="select-native-1">Offsite:</label>
+                <select name="A-Offsite" id="select-native-1">
+                    <option value="GrpADrv1">GrpADrv1</option>
+                    <option value="GrpADrv2">GrpADrv2</option>
+                    <option value="GrpADrv3">GrpADrv3</option>
+                </select>
+            </div>
+            <button type="submit" class="ui-btn ui-corner-all ui-shadow ui-btn-a ui-btn-icon-left ui-icon-check">Submit Role Change</button>
+        </div>
+    </form>
+</div>
+
+{% if a_role_error %}
+<h3>WARNING: There was an error when submitting role change for Group A, please try again</h3>
+{% endif %}
+
 <h2>Group B</h2>
 <ul data-role="listview" data-inset="true">
 {% for d in hard_drives %}
@@ -42,6 +76,39 @@
 {% endfor %}
 </ul>
 
+<a href="#B-Role-Change" data-rel="popup" data-position-to="window" class="ui-btn ui-corner-all ui-shadow ui-btn-inline ui-icon-edit ui-btn-icon-left ui-btn-a" data-transition="turn">Change Drive Roles</a>
+<div data-role="popup" id="B-Role-Change" data-theme="a" class="ui-corner-all">
+    <form>
+        <div style="padding:10px 20px;">
+            <h3>Assign a Role to a Drive</h3>
+            <div class="ui-field-contain">
+                <label for="select-native-1">Primary:</label>
+                <select name="B-Primary" id="select-native-1">
+                    <option value="GrpBDrv1">GrpBDrv1</option>
+                    <option value="GrpBDrv2">GrpBDrv2</option>
+                    <option value="GrpBDrv3">GrpBDrv3</option>
+                </select>
+                <label for="select-native-1">Secondary:</label>
+                <select name="B-Secondary" id="select-native-1">
+                    <option value="GrpBDrv1">GrpBDrv1</option>
+                    <option value="GrpBDrv2">GrpBDrv2</option>
+                    <option value="GrpBDrv3">GrpBDrv3</option>
+                </select>
+                <label for="select-native-1">Offsite:</label>
+                <select name="B-Offsite" id="select-native-1">
+                    <option value="GrpBDrv1">GrpBDrv1</option>
+                    <option value="GrpBDrv2">GrpBDrv2</option>
+                    <option value="GrpBDrv3">GrpBDrv3</option>
+                </select>
+            </div>
+            <button type="submit" class="ui-btn ui-corner-all ui-shadow ui-btn-a ui-btn-icon-left ui-icon-check">Submit Role Change</button>
+        </div>
+    </form>
+</div>
+
+{% if b_role_error %}
+<h3>WARNING: There was an error when submitting role change for Group b, please try again</h3>
+{% endif %}
 
 
 </div>

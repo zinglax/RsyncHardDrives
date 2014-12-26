@@ -117,7 +117,14 @@ def set_drive_roles(group_letter):
     for key in hard_drives:
         if group_letter in key:
             print "Drive: " + key + " is set to: " + hard_drives[key][0]
-    
+
+def set_drive_role(drive, role):
+    if (not role in {"primary", "secondary", "offsite"}) or (drive not in hard_drives.keys()):
+        print "The drive or role you submitted was not recognized, no changes made"
+    else:
+        hard_drives[drive][0] = role
+        config['hard_drive'] = hard_drives
+        config.write()
     
 def update_wiki(path, folder_name): # TODO
     ''' Updates the wiki page with each of the drives information and file info'''
