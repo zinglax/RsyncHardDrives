@@ -55,20 +55,34 @@ def synchronize_hard_drives(primary_drive, secondary_drive):
     mounted = get_mounted_drives()[0]
     if not (primary_drive in mounted) or not (secondary_drive in mounted):
         print "One of the drives you are trying to synchornize is not mounted (Exiting...)"        
-        return
+        return "Drive not Mounted"
     
     # Checking that drives have proper roles
     if not(check_hard_drive_role(primary_drive, "primary")):
         print "The primary drive is not properly labeled in the .ini (Exiting...)"
+        return "Primary is Not Properly Labeled"
     if not(check_hard_drive_role(secondary_drive, "secondary")):
         print "The secondary drive is not properly labeled in the .ini (Exiting...)"
+        return "Secondary is Not Properly Labeled"
 
 
     # Using rsync to synchronize drives and return output
-    rsync_command = "rsync -zvhr --delete " + hard_drives[primary_drive][1] + "/ " + hard_drives[secondary_drive][1]    
+    rsync_command = "rsync -zvhr --delete --progress " + hard_drives[primary_drive][1] + "/ " + hard_drives[secondary_drive][1]    + " > RSYNC.txt"
     return_val = subprocess.call(rsync_command, shell=True)
     
     return return_val
+
+def check_rsync_progress():
+    while True:
+        try:
+            with open("RSYNC.txt", 'rb') as fh:
+                fh.seek(-1024, 2)
+                last = fh.readlines()[-1].decode()        
+                
+                break
+        except IOError:
+            pass
+    return last[last.find('%')-2:last.find('%')]
 
 def check_hard_drive_role(drive, role):
     ''' checks whether the given hard drives are listed as a given role'''
@@ -267,3 +281,5 @@ if __name__=="__main__":
                     #GateFusionProject)
     
     #update_wiki(path, "GrpADrv1") 
+    
+    print check_rsync_progress()

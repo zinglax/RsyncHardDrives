@@ -42,8 +42,8 @@ def home(request):
       synchronize.set_drive_role(offsite, 'offsite')
                   
       # Redirect back home
-      #return render_to_response("sync/home.html", script_args)
-      return HttpResponseRedirect('/good_role_change/')
+      return render_to_response("sync/home.html", script_args)
+      #return HttpResponseRedirect('/good_role_change/')
   
     else:
       error_args = script_args.copy()
@@ -67,13 +67,27 @@ def home(request):
       synchronize.set_drive_role(offsite, 'offsite')
                   
       # Redirect back home
-      #return render_to_response("sync/home.html", script_args)
-      return HttpResponseRedirect('/good_role_change/')
+      return render_to_response("sync/home.html", script_args)
+      #return HttpResponseRedirect('/good_role_change/')
   
     else:
       error_args = script_args.copy()
       error_args["b_role_error"] = "B-Error"
       return render_to_response("sync/home.html", error_args)
   
+  if (request.GET.get("syncbutton")):
+    
+    # Using 2 mounted drives
+    if len(mounted_drives) == 2:
+      # Check mounted drives are in the same group
+      if synchronize.hard_drives[mounted_drives[0]][2] == synchronize.hard_drives[mounted_drives[1]][2]:
+        # get primary and secondary
+        if synchronize.hard_drives[mounted_drives[0]][0] == 'primary':            
+          synchronize.synchronize_hard_drives(mounted_drives[0], 
+                                       mounted_drives[1])
+        else:
+          synchronize.synchronize_hard_drives(synchronize.hard_drives[mounted_drives[1]], 
+                                                 synchronize.hard_drives[mounted_drives[0]])        
+          script_args['sync_percent'] = synchronize.check_rsync_progress()
   
   return render_to_response("sync/home.html", script_args)

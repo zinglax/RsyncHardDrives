@@ -8,7 +8,7 @@ from django.views.generic import RedirectView
 urlpatterns = patterns('',
     
     url(r'^$', 'sync.views.home', name='home'), 
-    url(r'^good_role_change/$', RedirectView.as_view(url='/ ')), 
+    #url(r'^good_role_change/$', RedirectView.as_view(url='/')), 
     
 
     # Examples:
