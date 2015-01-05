@@ -6,6 +6,7 @@ import sys
 import getpass
 import os
 import time
+import TracWiki
 
 # Gets Information from .ini file
 config = ConfigObj('hard_drive_roles.ini')
@@ -28,9 +29,11 @@ def get_mounted_drives():
     mounted_drives = []
     unmounted_drives = []
     
+    FNULL = open(os.devnull, 'w')
+    
     # Checks each hard drive to see if its mounted
     for key in hard_drives:
-        return_val = subprocess.call(command + key, shell=True)        
+        return_val = subprocess.call(command + key, shell=True, stdout=FNULL, stderr=subprocess.STDOUT)        
         if return_val == 1: # empty return values for subprocess are 1
             unmounted_drives.append(key)
         else:
@@ -40,37 +43,17 @@ def get_mounted_drives():
 def get_drive_role(drive):
     return hard_drives[drive][0]
 
+def get_role_for_group(group_letter, role):
+    for drive in hard_drives:
+        if hard_drives[drive][0] == role and hard_drives[drive][2] == group_letter:
+            return drive
+    
 def get_drive_group(drive):
     return hard_drives[drive][2]
     
-
 def check_readme_files(): # TODO
     ''' checks which files have and do not have a README.txt associated with them.'''
     pass
-
-def synchronize_hard_drives(primary_drive, secondary_drive): 
-    ''' synchronizes hard drives using rsync'''    
-    
-    # Check that drives are mounted 
-    mounted = get_mounted_drives()[0]
-    if not (primary_drive in mounted) or not (secondary_drive in mounted):
-        print "One of the drives you are trying to synchornize is not mounted (Exiting...)"        
-        return "Drive not Mounted"
-    
-    # Checking that drives have proper roles
-    if not(check_hard_drive_role(primary_drive, "primary")):
-        print "The primary drive is not properly labeled in the .ini (Exiting...)"
-        return "Primary is Not Properly Labeled"
-    if not(check_hard_drive_role(secondary_drive, "secondary")):
-        print "The secondary drive is not properly labeled in the .ini (Exiting...)"
-        return "Secondary is Not Properly Labeled"
-
-
-    # Using rsync to synchronize drives and return output
-    rsync_command = "rsync -zvhr --delete --progress " + hard_drives[primary_drive][1] + "/ " + hard_drives[secondary_drive][1]    + " > RSYNC.txt"
-    return_val = subprocess.call(rsync_command, shell=True)
-    
-    return return_val
 
 def check_rsync_progress():
     while True:
@@ -98,19 +81,71 @@ def check_group_roles(group_letter):
         if group_letter in key:
             found_roles.append(hard_drives[key][0])
     return all_roles == set(found_roles)
+
+  
+
+def synchronize_hard_drives(primary_drive, secondary_drive): 
+    ''' synchronizes hard drives using rsync'''    
+    
+    # Check that drives are mounted 
+    mounted = get_mounted_drives()[0]
+    if not (primary_drive in mounted) or not (secondary_drive in mounted):
+        print '######################################################'                        
+        print "## ERROR: One of the drives is not mounted, exiting command"        
+        print '######################################################'                        
+        return "Drive not Mounted"
+    
+    # Checking that drives have proper roles
+    if not(check_hard_drive_role(primary_drive, "primary")):
+        print '######################################################'                        
+        print "## Error: Primary drive does not have correct role"
+        print '######################################################'                        
+        return "Primary is Not Properly Labeled"
+    if not(check_hard_drive_role(secondary_drive, "secondary")):
+        print '######################################################'                        
+        print "## Error: Secondary drive does not have correct role"
+        print '######################################################'  
+        return "Secondary is Not Properly Labeled"
+
+
+    # Using rsync to synchronize drives and return output
+    print "## STARTING SYNCHRONIZATION ##########################"
+    print "## SEEING OUTPUT FROM RSYNC COMMAND ##################"
+    rsync_command = "rsync -zvhr --delete --progress " + hard_drives[primary_drive][1] + "/ " + hard_drives[secondary_drive][1]   # + " > RSYNC.txt"
+    return_val = subprocess.call(rsync_command, shell=True)
+    
+    if return_val == 0:
+        print '######################################################'          
+        print "## SYNCRONIZATION COMPLETED AND SUCCESSFUL ###########"
+    else:    
+        print '######################################################'  
+        print '## ERROR: Synchronization did not complete successfuly'
+        print '######################################################'  
+        
+
+        
+    return return_val
+
                 
     
-def set_drive_roles(group_letter):
+def set_drive_roles_helper(group_letter):
     ''' determins the functionality of each drive whether it is the Primary, Secondary, or Offsite.  Updates a .ini file to reflect changes'''
     
     for key in hard_drives:
         if group_letter in key:
             role = "teststring"
             while (not role.isdigit()) or (role not in ['1','2','3']):
-                role = raw_input("Set " + key + " to? Primary = 1, Secondary = 2, Offsite = 3. \nEnter Number: ")
+                print "## Set " + key + " to?"
+                print "## 1. Primary" 
+                print "## 2. Secondary"
+                print "## 3. Offsite"
+                role = raw_input("## ENTER A ROLE NUMBER (1, 2, OR 3): ")
                 
                 if (not role.isdigit()) or (role not in ['1','2','3']):
-                    print "Please Enter 1, 2, or 3, for corrisponding drive role."
+                    print '######################################################'                                
+                    print "## ERROR: Enter 1, 2, or 3, for a drive role."
+                    print '######################################################'            
+                    
             
             if role == '1':
                 hard_drives[key][0] = 'primary'
@@ -121,16 +156,31 @@ def set_drive_roles(group_letter):
     
         
     if not check_group_roles(group_letter):
-        print "Two or more of the drives were set to the same value. Try again."
-        set_drive_roles(group_letter)
+        print '######################################################'            
+        print "## ERROR: Two drives detected with same value. Try again."
+        print '######################################################'            
+        
+        set_drive_roles_helper(group_letter)
+        
+        
+    return hard_drives
+
+def set_drive_roles(group_letter):
+    if group_letter in {'a', "A"}:
+        group_letter = 'A'
+    else:
+        group_letter = 'B'
+    
+    hard_drives = set_drive_roles_helper(group_letter)
     
     config['hard_drive'] = hard_drives
     config.write()
     
-    print "Update Complete"
+    print '######################################################'    
+    print "## UPDATE COMPLETE ###################################"
     for key in hard_drives:
         if group_letter in key:
-            print "Drive: " + key + " is set to: " + hard_drives[key][0]
+            print "## Drive: " + key + " is set to: " + hard_drives[key][0]
 
 def set_drive_role(drive, role):
     if (not role in {"primary", "secondary", "offsite"}) or (drive not in hard_drives.keys()):
@@ -189,52 +239,6 @@ def update_wiki(path, folder_name): # TODO
     for d in directories:
         update_wiki(path + '/' + d, d)
 
-
-#----------------------------------------------------------------------
-def get_user_info():
-    """
-    This funciton gets the username and password of the user and returns
-    them 
-    """
-    username = str(raw_input("Enter Trac Username: "))
-    password = str(getpass.getpass("Enter Trac Password: "))
-    #password = str(raw_input("Enter Trac Password: "))
-    return username, password
-
-#----------------------------------------------------------------------
-def wiki_login(username, password, trac_url):
-    """
-    logs in to the wiki given the arguments username and password.
-    """    
-    tc.add_auth("Trac", trac_url, 
-                '%s' % username, '%s' % password)
-    tc.go(trac_url + '/login')
-    tc.showforms()
-    tc.show()
-    
-
-#----------------------------------------------------------------------
-def create_wiki_page(username, password, body_string, wiki_page_name, project_name):
-    """
-    Creates a wiki page with the content specified by the paramater
-    'data_string' with the name specified by 'wiki_page_name'
-    """
-    wiki_login(username, password, project_name)
-    
-    # Generating URL for new Page
-    edit = '?action=edit'
-    slash = '/'
-    newpage = wiki_page_name + edit    
-
-    # Navigates to page Via Twill
-    tc.go(newpage)
-    
-    # Enters bodystring and submits the new page
-    tc.showforms()
-    tc.show()
-    tc.fv('','text', body_string)
-    tc.submit('11')  
-
 def walking_files(directory):
     for root, dirs, files in os.walk(directory, topdown=False):
         for name in files:
@@ -268,18 +272,94 @@ def send_email(): # TODO
     except:
         print "failed to send mail"
 
+def output_mounted_drives():
+    print '######################################################'    
+    print '## CURRENT DRIVES MOUNTED ############################'
+        
+    mounted = get_mounted_drives()[0]
+    if len(mounted) == 0:
+        print '## There are no drives currently mounted'
+    else:
+        for i, d in enumerate(mounted):
+            print '## ' + str(i+1) + '. ' + d    
 
+    print '######################################################'    
+                
+
+def output_prompt_commands():
+    print '######################################################'
+    print '## COMMANDS ##########################################'
+    print '## 1. Change Drive Roles #############################'
+    print '## 2. Refresh Mounted Drives #########################'
+    print '## 3. Synchronize Hard Drvies ########################'
+    command = raw_input("## ENTER A COMMAND NUMBER: ")    
+    print '######################################################'
+    return command
 
 if __name__=="__main__":
-    pass
-
-    #path = "/media/dylan/GrpADrv1"
     
-    #username, password = get_user_info()
-    #create_wiki_page(username, password, "THiS IS JUST A TEST", 
-                    #HardDriveSyncTool + '/' + 'test', 
-                    #GateFusionProject)
+    print '######################################################'
+    print '### WELCOME TO THE HARD DRIVE SYNCHRONIZATION TOOL ###'
+        
+    output_mounted_drives()
     
-    #update_wiki(path, "GrpADrv1") 
+    command = output_prompt_commands()
     
-    print check_rsync_progress()
+    
+    # Command Loop
+    while True:
+        
+        # COMMAND 1
+        if command == str(1):
+            group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")
+            
+            while group_letter not in {"A", "a","B","b"}:
+                print '######################################################'
+                print "## ERROR: PLEASE ENTER A OR B..."
+                print '######################################################'                     
+                
+                group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")
+            set_drive_roles(group_letter)
+            
+        # COMMAND 2
+        elif command == str(2):
+            output_mounted_drives()
+            
+        # COMMAND 3    
+        elif command == str(3):
+            primaries = {}
+            count = 0
+            # Select a Primary Drive to Synchronize
+            print "## PRIMARY DRIVES ####################################"
+            for i, drive in enumerate(hard_drives):
+                if hard_drives[drive][0] == 'primary':
+                    count = count + 1
+                    print "## " + str(count) + ". " + drive
+                    primaries[str(count)] = drive
+            
+            primary = None
+            while primary not in primaries.keys():
+                primary = raw_input("## ENTER A PRIMARY DRIVE NUMBER: ")
+            
+            primary = primaries[primary]
+            
+            group_letter = hard_drives[primary][2]
+            secondary = get_role_for_group(group_letter, 'secondary')        
+            
+            print '######################################################'                
+            print '## Trying to Synchronize Data on'
+            print '## Primary Drive: ' + primary
+            print '## To existing data on'
+            print '## Secondary Drive: ' + secondary
+            
+            synchronize_hard_drives(primary, secondary)
+            
+            
+            # Check if the secondary has been synced later than the primary (or maybe more data on secondary than primary)
+             
+             
+        else:
+            print '######################################################'   
+            print '## ERROR: Command not recognized. Try again'
+        command = output_prompt_commands()
+        
