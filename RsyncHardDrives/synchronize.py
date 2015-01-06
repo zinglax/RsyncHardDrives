@@ -7,16 +7,23 @@ import getpass
 import os
 import time
 import TracWiki
+import datetime
 
 # Gets Information from .ini file
 config = ConfigObj('hard_drive_roles.ini')
 hard_drives = config['hard_drive']
 HardDriveSyncTool = config['paths']["HardDriveSyncTool"]
 GateFusionProject = config['paths']['GateFusionProject']
+GateFusionProjectHard = config['paths']['GateFusionProjectHard']
 
 # Alert email
 to_email = "dylanzingler@gmail.com"
 from_email = "dylanzingler@gmail.com"
+
+# Wiki Interaction ***USES HARD URL***
+TWC = TracWiki.Trac_Wiki_Communicator(username='dzingler',
+                                      password='dzingler',
+                                      url=GateFusionProjectHard)
 
 def mount_hard_drive(): # TODO
     ''' programatically mounts hard drive'''
@@ -123,6 +130,11 @@ def synchronize_hard_drives(primary_drive, secondary_drive):
         print '######################################################'  
         
 
+    hard_drives[primary_drive][3] = time.time()
+    hard_drives[secondary_drive][3] = time.time()
+    
+    config['hard_drive'] = hard_drives
+    config.write()    
         
     return return_val
 
@@ -163,6 +175,9 @@ def set_drive_roles_helper(group_letter):
         set_drive_roles_helper(group_letter)
         
         
+     
+        
+        
     return hard_drives
 
 def set_drive_roles(group_letter):
@@ -189,15 +204,135 @@ def set_drive_role(drive, role):
         hard_drives[drive][0] = role
         config['hard_drive'] = hard_drives
         config.write()
+
+def switch_primary_drive(group_letter):
+    if group_letter in {'a', 'A'}:
+        group_letter = "A"
+        secondary = get_role_for_group('A', 'secondary')
+        offsite = get_role_for_group('A', 'offsite')
+        primary = get_role_for_group('A', 'primary')
+    else:
+        group_letter = "B"
+        secondary = get_role_for_group('B', 'secondary')
+        offsite = get_role_for_group('B', 'offsite')
+        primary = get_role_for_group('B', 'primary')
+        
+    print '## CURRENT PRIMARY IS ' + primary
+    print '## 1. Secondary: ' + secondary
+    print '## 2. Offsite: ' + offsite
     
-def update_wiki(path, folder_name): # TODO
+    choice = None
+    while choice not in {'1', '2'}:
+        choice = raw_input("## ENTER DRIVE NUMBER TO SWITCH WITH PRIMARY: ")
+    
+    if choice == '1':
+        if  not hard_drives[primary][3] == hard_drives[secondary][3]:
+            print '######################################################'
+            print '## ERROR: Modification dates are not correct. '
+            print '## Data could be lost if this change is made'
+            print '## The primary is must be synchronized with secondary'
+            print '## before this change can take place. Exiting command.'
+            print '######################################################'
+            return
+        else:
+            hard_drives[primary][0] = 'secondary'
+            hard_drives[secondary][0] = 'primary'        
+    else:
+        if  not hard_drives[primary][3] == hard_drives[offsite][3]:
+            print '######################################################'
+            print '## ERROR: Modification dates are not correct.'
+            print '## Data could be lost if this change is made'
+            print '## Try switching the offsite to secondary then'
+            print '## synchronizing, then switching primary again.'
+            print '## Exiting command...'
+            print '######################################################'
+            return 
+        else:
+            hard_drives[primary][0] = 'offsite'
+            hard_drives[offsite][0] = 'primary'      
+
+    config['hard_drive'] = hard_drives
+    config.write()    
+    print '######################################################'    
+    print '## UPDATE COMPLETED ##################################'
+    print '## Primary: ' + get_role_for_group(group_letter, "primary")
+    print '## Secondary: ' + get_role_for_group(group_letter, "secondary")
+    print '## Offsite: ' + get_role_for_group(group_letter, "offsite")
+
+def update_wiki(wiki_drive):
+    
+    HardDriveSyncTool_HomePage = '''= Hard Drive Synchronization Tool =
+
+This page documents the hard drive synchronization tool which is used for backing-up/synchronizing hard drives (mainly the two 2TB hard drives for the project stored locally and the third offsite). 
+
+------------------------------
+
+== [wiki:HardDriveSyncTool/GrpA Group A] == 
+
+
+== [wiki:HardDriveSyncTool/GrpB Group B] == 
+
+
+--------------------------------------
+== Drives Table ==
+Information taken from the configuration file [[BR]]
+%s
+---------------------------------------
+
+== Documentation =='''
+    
+    # Table of drive information from .ini file
+    drive_table = "||= '''NAME''' =||= '''ROLE''' =||= '''PATH''' =||= '''GROUP''' =||= '''LAST SYNCHRONIZED DATE''' =||\n"
+    drive_table_format = '|| %s || %s || %s || %s || %s ||'
+    for drive in hard_drives:
+        drive_table += drive_table_format % (drive,
+                                             hard_drives[drive][0],
+                                             hard_drives[drive][1],
+                                             hard_drives[drive][2],
+                                             datetime.datetime.fromtimestamp(float(hard_drives[drive][3]))) + '\n'
+    drive_table += '\n Last Modified: ' + str(datetime.datetime.now())
+    
+    HardDriveSyncTool_HomePage = HardDriveSyncTool_HomePage % (drive_table)
+    
+    # Creating Home Page With TracWiki Class
+    TWC.create_page('HardDriveSyncTool', page_text=HardDriveSyncTool_HomePage)
+    
+    
+    # Creating all of the Directory pages for selected drive
+    mounted = get_mounted_drives()[0]
+    if wiki_drive in mounted:
+        if hard_drives[wiki_drive][2] == "A":
+            folder_name = "GrpA"
+        else:
+            folder_name = "GrpB"
+        
+        path = hard_drives[wiki_drive][1]
+        update_wiki_helper(path, folder_name)
+    
+def update_wiki_helper(path, folder_name): # TODO
     ''' Updates the wiki page with each of the drives information and file info'''
     
     # Gets files and directories for current path
     files = os.walk(path).next()[2]
+    
+    # Removes hidden or '~' edited files and directories
+    for f in files[:]:
+        if '.' == f[0] or '~' == f[-1]:
+            files.remove(f)                    
     directories = os.walk(path).next()[1]
+    for d in directories[:]:
+        if '.' == d[0] or '~' == d[-1]:
+            directories.remove(d)        
             
     body_string = "= " + folder_name + " =\n"
+
+    # Creates the Wiki Page Name
+    for drive in hard_drives:
+        if hard_drives[drive][1] in path:
+            if hard_drives[drive][2] == "A":
+                page_name = path.replace(hard_drives[drive][1], "HardDriveSyncTool/GrpA")
+            else:
+                page_name = path.replace(hard_drives[drive][1], "HardDriveSyncTool/GrpB")
 
     # Create Files Table
     if not len(files) == 0:
@@ -218,14 +353,14 @@ def update_wiki(path, folder_name): # TODO
     # Creates Directories Table
     if not len(directories) == 0:
         directory_table_header = "|| NAME || SIZE || MODIFIED DATE || PATH || NOTES ||"
-        directory_table_format = "|| %s || %s || %s || %s || %s ||" 
+        directory_table_format = "||[wiki:%s %s]|| %s || %s || %s || %s ||" 
         directory_table = "=== Directories ===\n" + directory_table_header
         for d in directories:
             info = os.stat(path + '/' + d)
             size = str(info.st_size) + " Bytes"
             modified_date = time.ctime(info.st_mtime)
             full_path = path + '/' + d
-            directory_table += '\n' + file_table_format % (d, size, modified_date, full_path, "Nothing yet")
+            directory_table += '\n' + directory_table_format % (page_name + '/' + d, d, size, modified_date, full_path, "Nothing yet")
         
         body_string += "\n" + directory_table
     else:
@@ -233,11 +368,15 @@ def update_wiki(path, folder_name): # TODO
         
     ## Create Wikipage 
     # create_wiki_page(username, password, body_string, wiki_page_name, project_name)
-    print body_string
+    
+                
+    TWC.create_page(page_name, body_string)
+    
+    #print body_string
 
     # Recurse Down to the next level of wiki pages
     for d in directories:
-        update_wiki(path + '/' + d, d)
+        update_wiki_helper(path + '/' + d, d)
 
 def walking_files(directory):
     for root, dirs, files in os.walk(directory, topdown=False):
@@ -272,6 +411,24 @@ def send_email(): # TODO
     except:
         print "failed to send mail"
 
+def switch_secondary_offsite(group_letter):
+    if group_letter in {'a', 'A'}:
+        secondary = get_role_for_group('A', 'secondary')
+        offsite = get_role_for_group('A', 'offsite')
+    else:
+        secondary = get_role_for_group('B', 'secondary')
+        offsite = get_role_for_group('B', 'offsite')
+    
+    hard_drives[secondary][0] = 'offsite'
+    hard_drives[offsite][0] = 'secondary'
+    
+    config['hard_drive'] = hard_drives
+    config.write()    
+    print '######################################################'
+    print '## UPDATE COMPLETED ##################################'
+    print '## SECONDARY IS NOW: ' + offsite
+    print '## OFFSITE IS NOW: ' + secondary
+        
 def output_mounted_drives():
     print '######################################################'    
     print '## CURRENT DRIVES MOUNTED ############################'
@@ -287,14 +444,118 @@ def output_mounted_drives():
                 
 
 def output_prompt_commands():
+    
     print '######################################################'
     print '## COMMANDS ##########################################'
     print '## 1. Change Drive Roles #############################'
     print '## 2. Refresh Mounted Drives #########################'
     print '## 3. Synchronize Hard Drvies ########################'
+    print '## 4. Update Wiki Pages ##############################'
+    print '## 5. Switch Secondary and Offsite ###################'
+    print '## 6. Switch Primary Drive ###########################'
+    print '## 7. Dispaly Drive Info #############################'
     command = raw_input("## ENTER A COMMAND NUMBER: ")    
     print '######################################################'
     return command
+
+def command_change_drive_roles():
+    group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")
+                
+    while group_letter not in {"A", "a","B","b"}:
+        print '######################################################'
+        print "## ERROR: PLEASE ENTER A OR B..."
+        print '######################################################'                     
+        
+        group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")
+    set_drive_roles(group_letter) 
+    
+def command_refresh_mounted_drives():
+    output_mounted_drives()
+    
+def command_synchronize_hard_drives():    
+    primaries = {}
+    count = 0
+    # Select a Primary Drive to Synchronize
+    print "## PRIMARY DRIVES ####################################"
+    for i, drive in enumerate(hard_drives):
+        if hard_drives[drive][0] == 'primary':
+            count = count + 1
+            print "## " + str(count) + ". " + drive
+            primaries[str(count)] = drive
+    
+    primary = None
+    while primary not in primaries.keys():
+        primary = raw_input("## ENTER A PRIMARY DRIVE NUMBER: ")
+    
+    primary = primaries[primary]
+    
+    group_letter = hard_drives[primary][2]
+    secondary = get_role_for_group(group_letter, 'secondary')        
+    
+    print '######################################################'                
+    print '## Trying to Synchronize Data on'
+    print '## Primary Drive: ' + primary
+    print '## To existing data on'
+    print '## Secondary Drive: ' + secondary
+    
+    synchronize_hard_drives(primary, secondary)
+    
+    
+    # Check if the secondary has been synced later than the primary (or maybe more data on secondary than primary)
+
+def command_update_wiki_pages():
+    primaries = {}
+    count = 0            
+    print '######################################################' 
+    print "## PRIMARY DRIVES ####################################"
+    for i, drive in enumerate(hard_drives):
+        if hard_drives[drive][0] == 'primary':
+            count = count + 1
+            print "## " + str(count) + ". " + drive
+            primaries[str(count)] = drive
+    
+    primary = None
+    while primary not in primaries.keys():
+        primary = raw_input("## ENTER A PRIMARY DRIVE NUMBER FOR WIKI UPDATE: ")
+    
+    primary = primaries[primary]      
+    
+    update_wiki(primary)    
+
+def command_switch_secondary_and_offsite():
+    group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")                    
+    while group_letter not in {"A", "a","B","b"}:
+        print '######################################################'
+        print "## ERROR: PLEASE ENTER A OR B..."
+        print '######################################################'                                     
+        group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")                    
+    switch_secondary_offsite(group_letter)    
+
+def command_switch_primary_drive():
+    group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")
+                            
+    while group_letter not in {"A", "a","B","b"}:
+        print '######################################################'
+        print "## ERROR: PLEASE ENTER A OR B..."
+        print '######################################################'                     
+        
+        group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")
+    
+    switch_primary_drive(group_letter)    
+    
+
+def command_display_drives():
+    print '######################################################'    
+    print '## INFORMATION STORED IN SYNCHRONIZATION TOOL ########'
+    
+    for d in hard_drives:
+        print '######################################################'            
+        print '## DRIVE: '+ d 
+        print '## ROLE: ' + hard_drives[d][0]
+        print '## MOUNT POINT: ' + hard_drives[d][1]
+        print '## GROUP: ' + hard_drives[d][2]
+        print '## LAST SYNCHRONIZED: ' + str(datetime.datetime.fromtimestamp(float(hard_drives[d][3])))
+    
 
 if __name__=="__main__":
     
@@ -303,61 +564,39 @@ if __name__=="__main__":
         
     output_mounted_drives()
     
-    command = output_prompt_commands()
-    
+    command = output_prompt_commands()    
     
     # Command Loop
     while True:
         
         # COMMAND 1
         if command == str(1):
-            group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")
-            
-            while group_letter not in {"A", "a","B","b"}:
-                print '######################################################'
-                print "## ERROR: PLEASE ENTER A OR B..."
-                print '######################################################'                     
-                
-                group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")
-            set_drive_roles(group_letter)
+            command_change_drive_roles()
             
         # COMMAND 2
         elif command == str(2):
-            output_mounted_drives()
+            command_refresh_mounted_drives()
             
         # COMMAND 3    
         elif command == str(3):
-            primaries = {}
-            count = 0
-            # Select a Primary Drive to Synchronize
-            print "## PRIMARY DRIVES ####################################"
-            for i, drive in enumerate(hard_drives):
-                if hard_drives[drive][0] == 'primary':
-                    count = count + 1
-                    print "## " + str(count) + ". " + drive
-                    primaries[str(count)] = drive
+            command_synchronize_hard_drives()
+                         
+        # COMMAND 4
+        elif command == str(4):
+            command_update_wiki_pages()
+              
+        # COMMAND 5          
+        elif command == str(5):
+            command_switch_secondary_and_offsite()
+        
+        # COMMAND 6     
+        elif command == str(6):
+            command_switch_primary_drive()
             
-            primary = None
-            while primary not in primaries.keys():
-                primary = raw_input("## ENTER A PRIMARY DRIVE NUMBER: ")
-            
-            primary = primaries[primary]
-            
-            group_letter = hard_drives[primary][2]
-            secondary = get_role_for_group(group_letter, 'secondary')        
-            
-            print '######################################################'                
-            print '## Trying to Synchronize Data on'
-            print '## Primary Drive: ' + primary
-            print '## To existing data on'
-            print '## Secondary Drive: ' + secondary
-            
-            synchronize_hard_drives(primary, secondary)
-            
-            
-            # Check if the secondary has been synced later than the primary (or maybe more data on secondary than primary)
-             
-             
+        
+        # COMMAND 7
+        elif command == str(7):
+            command_display_drives()
         else:
             print '######################################################'   
             print '## ERROR: Command not recognized. Try again'
