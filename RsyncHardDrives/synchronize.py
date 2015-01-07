@@ -62,6 +62,20 @@ def check_readme_files(): # TODO
     ''' checks which files have and do not have a README.txt associated with them.'''
     pass
 
+def get_readme_description(dir_or_file):
+    ''' Gets a description string from a readme file for a directory or a file'''
+    readme_file = dir_or_file + "README.txt"
+    
+    try: 
+        with open(readme_file) as readme:
+            readme.seek(0)
+            readme_lines = readme.readlines()
+            for line in readme_lines:
+                if "Description:" in line:
+                    return line[len("Description:"):-1]
+    except IOError:    
+        return "No README.txt Found."
+
 def check_rsync_progress():
     while True:
         try:
@@ -114,11 +128,18 @@ def synchronize_hard_drives(primary_drive, secondary_drive):
         print '######################################################'  
         return "Secondary is Not Properly Labeled"
 
-
+    # Checking Modification dates
+    if not (hard_drives[primary_drive][3] >= hard_drives[secondary_drive][3]):
+        print '######################################################'          
+        print '## ERROR: The Secondary drive has a later modification date'
+        print '## Data could be lost if synchronization continued. Exiting.'
+        print '######################################################'  
+        return "Modification dates are not correct"
+        
     # Using rsync to synchronize drives and return output
     print "## STARTING SYNCHRONIZATION ##########################"
     print "## SEEING OUTPUT FROM RSYNC COMMAND ##################"
-    rsync_command = "rsync -zvhr --delete --progress " + hard_drives[primary_drive][1] + "/ " + hard_drives[secondary_drive][1]   # + " > RSYNC.txt"
+    rsync_command = "rsync -zvhr --delete --info=progress2 " + hard_drives[primary_drive][1] + "/ " + hard_drives[secondary_drive][1]   # + " > RSYNC.txt"
     return_val = subprocess.call(rsync_command, shell=True)
     
     if return_val == 0:
@@ -129,9 +150,9 @@ def synchronize_hard_drives(primary_drive, secondary_drive):
         print '## ERROR: Synchronization did not complete successfuly'
         print '######################################################'  
         
-
-    hard_drives[primary_drive][3] = time.time()
-    hard_drives[secondary_drive][3] = time.time()
+    sync_time = time.time()
+    hard_drives[primary_drive][3] = sync_time
+    hard_drives[secondary_drive][3] = sync_time
     
     config['hard_drive'] = hard_drives
     config.write()    
@@ -314,16 +335,31 @@ def update_wiki_helper(path, folder_name): # TODO
     
     # Gets files and directories for current path
     files = os.walk(path).next()[2]
+    directories = os.walk(path).next()[1]    
     
     # Removes hidden or '~' edited files and directories
     for f in files[:]:
         if '.' == f[0] or '~' == f[-1]:
             files.remove(f)                    
-    directories = os.walk(path).next()[1]
     for d in directories[:]:
         if '.' == d[0] or '~' == d[-1]:
             directories.remove(d)        
             
+            
+    # Removes README.txt Files
+    for f in files[:]:
+        try:
+            if 'README.txt' == f[-10:]:
+                files.remove(f)
+        except IndexError:
+            continue
+    #for d in directories[:]:
+        #try:
+            #if 'README.txt' == d[-10]:
+                #directories.remove(d)
+        #except IndexError:
+            #continue        
+    
     body_string = "= " + folder_name + " =\n"
 
     # Creates the Wiki Page Name
@@ -336,7 +372,7 @@ def update_wiki_helper(path, folder_name): # TODO
 
     # Create Files Table
     if not len(files) == 0:
-        file_table_header = "|| NAME || SIZE || MODIFIED DATE || PATH || NOTES ||"
+        file_table_header = "||= '''NAME''' =||= '''SIZE ''' =||= ''' MODIFIED DATE ''' =||= ''' PATH ''' =||= ''' NOTES''' =||"
         file_table_format = "|| %s || %s || %s || %s || %s ||" 
         file_table = "=== Files ===\n" + file_table_header
         for f in files:
@@ -344,7 +380,12 @@ def update_wiki_helper(path, folder_name): # TODO
             size = str(info.st_size) + " Bytes"
             modified_date = time.ctime(info.st_mtime)
             full_path = path + '/' + f
-            file_table += '\n' + file_table_format % (f, size, modified_date, full_path, "Nothing yet")
+            file_table += '\n' + file_table_format % (f, 
+                                                      size, 
+                                                      modified_date, 
+                                                      full_path, 
+                                                      get_readme_description(full_path)
+                                                      )
             
         body_string += file_table
     else:
@@ -352,7 +393,7 @@ def update_wiki_helper(path, folder_name): # TODO
 
     # Creates Directories Table
     if not len(directories) == 0:
-        directory_table_header = "|| NAME || SIZE || MODIFIED DATE || PATH || NOTES ||"
+        directory_table_header = "||= '''NAME''' =||= '''SIZE ''' =||= ''' MODIFIED DATE ''' =||= ''' PATH ''' =||= ''' NOTES''' =||"
         directory_table_format = "||[wiki:%s %s]|| %s || %s || %s || %s ||" 
         directory_table = "=== Directories ===\n" + directory_table_header
         for d in directories:
@@ -360,7 +401,13 @@ def update_wiki_helper(path, folder_name): # TODO
             size = str(info.st_size) + " Bytes"
             modified_date = time.ctime(info.st_mtime)
             full_path = path + '/' + d
-            directory_table += '\n' + directory_table_format % (page_name + '/' + d, d, size, modified_date, full_path, "Nothing yet")
+            directory_table += '\n' + directory_table_format % (page_name + '/' + d,
+                                                                d, 
+                                                                size, 
+                                                                modified_date, 
+                                                                full_path, 
+                                                                get_readme_description(full_path)
+                                                                )
         
         body_string += "\n" + directory_table
     else:
@@ -453,7 +500,7 @@ def output_prompt_commands():
     print '## 4. Update Wiki Pages ##############################'
     print '## 5. Switch Secondary and Offsite ###################'
     print '## 6. Switch Primary Drive ###########################'
-    print '## 7. Dispaly Drive Info #############################'
+    print '## 7. Display Drive Info #############################'
     command = raw_input("## ENTER A COMMAND NUMBER: ")    
     print '######################################################'
     return command
@@ -592,8 +639,7 @@ if __name__=="__main__":
         # COMMAND 6     
         elif command == str(6):
             command_switch_primary_drive()
-            
-        
+                    
         # COMMAND 7
         elif command == str(7):
             command_display_drives()
