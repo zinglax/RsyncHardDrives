@@ -219,6 +219,7 @@ Information taken from the configuration file [[BR]]
 
 == Documentation =='''
     
+    
     # Table of drive information from .ini file
     drive_table = "||= '''NAME''' =||= '''ROLE''' =||= '''PATH''' =||= '''GROUP''' =||= '''LAST SYNCHRONIZED DATE''' =||\n"
     drive_table_format = '|| %s || %s || %s || %s || %s ||'
@@ -389,9 +390,10 @@ def output_prompt_commands():
     print '## 1. Refresh Mounted Drives #########################'
     print '## 2. Synchronize Hard Drvies ########################'
     print '## 3. Update Wiki Pages ##############################'
-    print '## 4. Switch Local Backup and Offsite Backup ###################'
+    print '## 4. Switch Local Backup and Offsite Backup #########'
     print '## 5. Switch Primary Drive ###########################'
     print '## 6. Display Drive Info #############################'
+    print '## Ctrl-c To exit the program ########################'
     command = input_command("## ENTER A COMMAND NUMBER: ", [str(x) for x in range(1,7)])
     print '######################################################'
     return command
