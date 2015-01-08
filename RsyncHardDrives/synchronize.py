@@ -1,13 +1,16 @@
 import subprocess
 import smtplib
 from configobj import ConfigObj
-#import twill.commands as tc
 import sys
 import getpass
 import os
 import time
 import TracWiki
 import datetime
+
+# Emailing libraries
+import smtplib
+from email.mime.text import MIMEText
 
 # Gets Information from .ini file
 config = ConfigObj('hard_drive_roles.ini')
@@ -17,8 +20,8 @@ GateFusionProject = config['paths']['GateFusionProject']
 GateFusionProjectHard = config['paths']['GateFusionProjectHard']
 
 # Alert email
-to_email = "dylanzingler@gmail.com"
-from_email = "dylanzingler@gmail.com"
+to_email = config['email']['to_email']
+from_email = config['email']['from_email']
 
 # Wiki Interaction ***USES HARD URL***
 TWC = TracWiki.Trac_Wiki_Communicator(username='dzingler',
@@ -93,9 +96,9 @@ def check_hard_drive_role(drive, role):
     return hard_drives[drive][0] == role
     
 def check_group_roles(group_letter):
-    ''' Ensure that there is a primary, secondary and an offsite for each group. group letter must be either A or B'''
+    ''' Ensure that there is a primary, local_backup and an offsite_backup for each group. group letter must be either A or B'''
     
-    all_roles = set(['primary', 'secondary', 'offsite'])
+    all_roles = set(['primary', 'local_backup', 'offsite_backup'])
     
     found_roles = []
     for key in hard_drives:
@@ -105,12 +108,12 @@ def check_group_roles(group_letter):
 
   
 
-def synchronize_hard_drives(primary_drive, secondary_drive): 
+def synchronize_hard_drives(primary_drive, local_backup_drive): 
     ''' synchronizes hard drives using rsync'''    
     
     # Check that drives are mounted 
     mounted = get_mounted_drives()[0]
-    if not (primary_drive in mounted) or not (secondary_drive in mounted):
+    if not (primary_drive in mounted) or not (local_backup_drive in mounted):
         print '######################################################'                        
         print "## ERROR: One of the drives is not mounted, exiting command"        
         print '######################################################'                        
@@ -122,16 +125,16 @@ def synchronize_hard_drives(primary_drive, secondary_drive):
         print "## Error: Primary drive does not have correct role"
         print '######################################################'                        
         return "Primary is Not Properly Labeled"
-    if not(check_hard_drive_role(secondary_drive, "secondary")):
+    if not(check_hard_drive_role(local_backup_drive, "local_backup")):
         print '######################################################'                        
-        print "## Error: Secondary drive does not have correct role"
+        print "## Error: Local Backup drive does not have correct role"
         print '######################################################'  
-        return "Secondary is Not Properly Labeled"
+        return "Local Backup is Not Properly Labeled"
 
     # Checking Modification dates
-    if not (hard_drives[primary_drive][3] >= hard_drives[secondary_drive][3]):
+    if not (hard_drives[primary_drive][3] >= hard_drives[local_backup_drive][3]):
         print '######################################################'          
-        print '## ERROR: The Secondary drive has a later modification date'
+        print '## ERROR: The Local Backup drive has a later modification date'
         print '## Data could be lost if synchronization continued. Exiting.'
         print '######################################################'  
         return "Modification dates are not correct"
@@ -139,7 +142,7 @@ def synchronize_hard_drives(primary_drive, secondary_drive):
     # Using rsync to synchronize drives and return output
     print "## STARTING SYNCHRONIZATION ##########################"
     print "## SEEING OUTPUT FROM RSYNC COMMAND ##################"
-    rsync_command = "rsync -zvhr --delete --info=progress2 " + hard_drives[primary_drive][1] + "/ " + hard_drives[secondary_drive][1]   # + " > RSYNC.txt"
+    rsync_command = "rsync -zvhr --delete --info=progress2 " + hard_drives[primary_drive][1] + "/ " + hard_drives[local_backup_drive][1]   # + " > RSYNC.txt"
     return_val = subprocess.call(rsync_command, shell=True)
     
     if return_val == 0:
@@ -152,7 +155,7 @@ def synchronize_hard_drives(primary_drive, secondary_drive):
         
     sync_time = time.time()
     hard_drives[primary_drive][3] = sync_time
-    hard_drives[secondary_drive][3] = sync_time
+    hard_drives[local_backup_drive][3] = sync_time
     
     config['hard_drive'] = hard_drives
     config.write()    
@@ -162,7 +165,10 @@ def synchronize_hard_drives(primary_drive, secondary_drive):
                 
     
 def set_drive_roles_helper(group_letter):
-    ''' determins the functionality of each drive whether it is the Primary, Secondary, or Offsite.  Updates a .ini file to reflect changes'''
+    ''' WARNING THIS METHOD IS DEPRICATED.
+    THIS METHOD DOES NOT CHECK MODIFICATION TIMES OF THE DRIVES WHICH COULD LEAD TO DATA LOSS'''
+    
+    ''' determins the functionality of each drive whether it is the Primary, Local Backup, or Offsite Backup.  Updates a .ini file to reflect changes'''
     
     for key in hard_drives:
         if group_letter in key:
@@ -170,8 +176,8 @@ def set_drive_roles_helper(group_letter):
             while (not role.isdigit()) or (role not in ['1','2','3']):
                 print "## Set " + key + " to?"
                 print "## 1. Primary" 
-                print "## 2. Secondary"
-                print "## 3. Offsite"
+                print "## 2. Local Backup"
+                print "## 3. Offsite Backup"
                 role = raw_input("## ENTER A ROLE NUMBER (1, 2, OR 3): ")
                 
                 if (not role.isdigit()) or (role not in ['1','2','3']):
@@ -183,9 +189,9 @@ def set_drive_roles_helper(group_letter):
             if role == '1':
                 hard_drives[key][0] = 'primary'
             elif role == '2':
-                hard_drives[key][0] = 'secondary'
+                hard_drives[key][0] = 'local_backup'
             else:
-                hard_drives[key][0] = 'offsite'
+                hard_drives[key][0] = 'offsite_backup'
     
         
     if not check_group_roles(group_letter):
@@ -202,6 +208,8 @@ def set_drive_roles_helper(group_letter):
     return hard_drives
 
 def set_drive_roles(group_letter):
+    ''' WARNING THIS METHOD IS DEPRICATED.
+    THIS METHOD DOES NOT CHECK MODIFICATION TIMES OF THE DRIVES WHICH COULD LEAD TO DATA LOSS'''
     if group_letter in {'a', "A"}:
         group_letter = 'A'
     else:
@@ -219,7 +227,7 @@ def set_drive_roles(group_letter):
             print "## Drive: " + key + " is set to: " + hard_drives[key][0]
 
 def set_drive_role(drive, role):
-    if (not role in {"primary", "secondary", "offsite"}) or (drive not in hard_drives.keys()):
+    if (not role in {"primary", "local_backup", "offsite_backup"}) or (drive not in hard_drives.keys()):
         print "The drive or role you submitted was not recognized, no changes made"
     else:
         hard_drives[drive][0] = role
@@ -229,62 +237,62 @@ def set_drive_role(drive, role):
 def switch_primary_drive(group_letter):
     if group_letter in {'a', 'A'}:
         group_letter = "A"
-        secondary = get_role_for_group('A', 'secondary')
-        offsite = get_role_for_group('A', 'offsite')
+        local_backup = get_role_for_group('A', 'local_backup')
+        offsite_backup = get_role_for_group('A', 'offsite_backup')
         primary = get_role_for_group('A', 'primary')
     else:
         group_letter = "B"
-        secondary = get_role_for_group('B', 'secondary')
-        offsite = get_role_for_group('B', 'offsite')
+        local_backup = get_role_for_group('B', 'local_backup')
+        offsite_backup = get_role_for_group('B', 'offsite_backup')
         primary = get_role_for_group('B', 'primary')
         
     print '## CURRENT PRIMARY IS ' + primary
-    print '## 1. Secondary: ' + secondary
-    print '## 2. Offsite: ' + offsite
+    print '## 1. Local Backup: ' + local_backup
+    print '## 2. Offsite Backup: ' + offsite_backup
     
     choice = None
     while choice not in {'1', '2'}:
         choice = raw_input("## ENTER DRIVE NUMBER TO SWITCH WITH PRIMARY: ")
     
     if choice == '1':
-        if  not hard_drives[primary][3] == hard_drives[secondary][3]:
+        if  not hard_drives[primary][3] == hard_drives[local_backup][3]:
             print '######################################################'
             print '## ERROR: Modification dates are not correct. '
             print '## Data could be lost if this change is made'
-            print '## The primary is must be synchronized with secondary'
+            print '## The primary is must be synchronized with local_backup'
             print '## before this change can take place. Exiting command.'
             print '######################################################'
             return
         else:
-            hard_drives[primary][0] = 'secondary'
-            hard_drives[secondary][0] = 'primary'        
+            hard_drives[primary][0] = 'local_backup'
+            hard_drives[local_backup][0] = 'primary'        
     else:
-        if  not hard_drives[primary][3] == hard_drives[offsite][3]:
+        if  not hard_drives[primary][3] == hard_drives[offsite_backup][3]:
             print '######################################################'
             print '## ERROR: Modification dates are not correct.'
             print '## Data could be lost if this change is made'
-            print '## Try switching the offsite to secondary then'
+            print '## Try switching the offsite_backup to local_backup then'
             print '## synchronizing, then switching primary again.'
             print '## Exiting command...'
             print '######################################################'
             return 
         else:
-            hard_drives[primary][0] = 'offsite'
-            hard_drives[offsite][0] = 'primary'      
+            hard_drives[primary][0] = 'offsite_backup'
+            hard_drives[offsite_backup][0] = 'primary'      
 
     config['hard_drive'] = hard_drives
     config.write()    
     print '######################################################'    
     print '## UPDATE COMPLETED ##################################'
     print '## Primary: ' + get_role_for_group(group_letter, "primary")
-    print '## Secondary: ' + get_role_for_group(group_letter, "secondary")
-    print '## Offsite: ' + get_role_for_group(group_letter, "offsite")
+    print '## Local Backup: ' + get_role_for_group(group_letter, "local_backup")
+    print '## Offsite Backup: ' + get_role_for_group(group_letter, "offsite_backup")
 
 def update_wiki(wiki_drive):
     
     HardDriveSyncTool_HomePage = '''= Hard Drive Synchronization Tool =
 
-This page documents the hard drive synchronization tool which is used for backing-up/synchronizing hard drives (mainly the two 2TB hard drives for the project stored locally and the third offsite). 
+This page documents the hard drive synchronization tool which is used for backing-up/synchronizing hard drives (mainly the two 2TB hard drives for the project stored locally and the third offsite_backup). 
 
 ------------------------------
 
@@ -432,49 +440,40 @@ def walking_files(directory):
         for name in dirs:
             print(os.path.join(root, name))    
 
-def send_email(): # TODO
-    import smtplib
+def send_email(to_email, from_email): # TODO
     
-    gmail_user = "dylanzingler@gmail.com"
-    gmail_pwd = ""
-    FROM = 'dylanzingler@gmail.com'
-    TO = ['dylanzingler@gmail.com'] #must be a list
-    SUBJECT = "Testing sending using gmail"
-    TEXT = "Testing sending mail using gmail servers"
+    # Create a text/plain message
+    msg = MIMEText("Disk replication is complete.")
     
-    # Prepare actual message
-    message = """\From: %s\nTo: %s\nSubject: %s\n\n%s
-    """ % (FROM, ", ".join(TO), SUBJECT, TEXT)
-    try:
-        #server = smtplib.SMTP(SERVER) 
-        server = smtplib.SMTP("smtp.gmail.com", 465) #or port 465 doesn't seem to work!
-        #server.ehlo()
-        server.starttls()
-        server.login(gmail_user, gmail_pwd)
-        server.sendmail(FROM, TO, message)
-        #server.quit()
-        server.close()
-        print 'successfully sent the mail'
-    except:
-        print "failed to send mail"
+    
+    msg['Subject'] = 'Disk replication'
+    msg['From'] = from_email
+    msg['To'] = to_email
+    
+    # Send the message via our own SMTP server, but don't include the
+    # envelope header.
+    s = smtplib.SMTP('cismailrelay.arinc.com')
+    s.sendmail(from_email, [to_email], msg.as_string())
+    s.quit()    
+    return "Email Sent"
 
-def switch_secondary_offsite(group_letter):
+def switch_local_backup_offsite_backup(group_letter):
     if group_letter in {'a', 'A'}:
-        secondary = get_role_for_group('A', 'secondary')
-        offsite = get_role_for_group('A', 'offsite')
+        local_backup = get_role_for_group('A', 'local_backup')
+        offsite_backup = get_role_for_group('A', 'offsite_backup')
     else:
-        secondary = get_role_for_group('B', 'secondary')
-        offsite = get_role_for_group('B', 'offsite')
+        local_backup = get_role_for_group('B', 'local_backup')
+        offsite_backup = get_role_for_group('B', 'offsite_backup')
     
-    hard_drives[secondary][0] = 'offsite'
-    hard_drives[offsite][0] = 'secondary'
+    hard_drives[local_backup][0] = 'offsite_backup'
+    hard_drives[offsite_backup][0] = 'local_backup'
     
     config['hard_drive'] = hard_drives
     config.write()    
     print '######################################################'
     print '## UPDATE COMPLETED ##################################'
-    print '## SECONDARY IS NOW: ' + offsite
-    print '## OFFSITE IS NOW: ' + secondary
+    print '## LOCAL BACKUP IS NOW: ' + offsite_backup
+    print '## OFFSITE BACKUP IS NOW: ' + local_backup
         
 def output_mounted_drives():
     print '######################################################'    
@@ -498,7 +497,7 @@ def output_prompt_commands():
     print '## 2. Refresh Mounted Drives #########################'
     print '## 3. Synchronize Hard Drvies ########################'
     print '## 4. Update Wiki Pages ##############################'
-    print '## 5. Switch Secondary and Offsite ###################'
+    print '## 5. Switch Local Backup and Offsite Backup ###################'
     print '## 6. Switch Primary Drive ###########################'
     print '## 7. Display Drive Info #############################'
     command = raw_input("## ENTER A COMMAND NUMBER: ")    
@@ -537,18 +536,18 @@ def command_synchronize_hard_drives():
     primary = primaries[primary]
     
     group_letter = hard_drives[primary][2]
-    secondary = get_role_for_group(group_letter, 'secondary')        
+    local_backup = get_role_for_group(group_letter, 'local_backup')        
     
     print '######################################################'                
     print '## Trying to Synchronize Data on'
     print '## Primary Drive: ' + primary
     print '## To existing data on'
-    print '## Secondary Drive: ' + secondary
+    print '## Local Backup Drive: ' + local_backup
     
-    synchronize_hard_drives(primary, secondary)
+    synchronize_hard_drives(primary, local_backup)
     
     
-    # Check if the secondary has been synced later than the primary (or maybe more data on secondary than primary)
+    # Check if the local_backup has been synced later than the primary (or maybe more data on local_backup than primary)
 
 def command_update_wiki_pages():
     primaries = {}
@@ -569,14 +568,14 @@ def command_update_wiki_pages():
     
     update_wiki(primary)    
 
-def command_switch_secondary_and_offsite():
+def command_switch_local_backup_and_offsite_backup():
     group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")                    
     while group_letter not in {"A", "a","B","b"}:
         print '######################################################'
         print "## ERROR: PLEASE ENTER A OR B..."
         print '######################################################'                                     
         group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")                    
-    switch_secondary_offsite(group_letter)    
+    switch_local_backup_offsite_backup(group_letter)    
 
 def command_switch_primary_drive():
     group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")
@@ -634,7 +633,7 @@ if __name__=="__main__":
               
         # COMMAND 5          
         elif command == str(5):
-            command_switch_secondary_and_offsite()
+            command_switch_local_backup_and_offsite_backup()
         
         # COMMAND 6     
         elif command == str(6):
