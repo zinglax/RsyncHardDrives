@@ -246,6 +246,9 @@ Information taken from the configuration file [[BR]]
         
         path = hard_drives[wiki_drive][1]
         update_wiki_helper(path, folder_name)
+    else:
+        print '## Primary drive used for Wiki Update is not mounted.'
+        print '## Only updated Home Page. Try mounting and reupdating.'
     
 def update_wiki_helper(path, folder_name): # TODO
     ''' Updates the wiki page with each of the drives information and file info'''
@@ -336,11 +339,11 @@ def walking_files(directory):
         for name in dirs:
             print(os.path.join(root, name))    
 
-def send_email(to_email, from_email): # TODO
+def send_email(to_email, from_email, msg): 
     
     # Create a text/plain message
-    msg = MIMEText("Disk replication is complete.")    
-    msg['Subject'] = 'Disk replication'
+    msg = MIMEText(msg)    
+    msg['Subject'] = 'Hard Drive Synchronization Tool'
     msg['From'] = from_email
     msg['To'] = to_email
     
@@ -424,6 +427,13 @@ def command_synchronize_hard_drives():
         print '## To existing data on'
         print '## Local Backup Drive: ' + local_backup        
         synchronize_hard_drives(primary, local_backup) 
+        
+        
+        msg = """Synchronization of the primary drive %s and local backup drive %s is now COMPLETED.
+        thanks for using the Hard Drive Synchronization Tool""" % (primary, local_backup)
+        
+        send_email(to_email,from_email, msg)
+        
     else:
         print "## Exiting Command"
 
@@ -499,16 +509,22 @@ if __name__=="__main__":
     # Command Loop
     while True:        
         if command == str(1):
+            print "## SELECTED: Refresh Mounted Drives Command"
             command_refresh_mounted_drives()            
         elif command == str(2):
+            print "## SELECTED: Synchronize Hard Drvies Command"
             command_synchronize_hard_drives()            
         elif command == str(3):
+            print "## SELECTED: Update Wiki Pages Command"
             command_update_wiki_pages()                         
         elif command == str(4):
+            print "## SELECTED: Switch Local Backup and Offsite Backup Command"
             command_switch_local_backup_and_offsite_backup()              
         elif command == str(5):
+            print "## SELECTED: Switch Primary Drive Command"
             command_switch_primary_drive()        
         elif command == str(6):
+            print "## SELECTED: Display Drive Info Command"            
             command_display_drives()
         else:
             print '######################################################'   
