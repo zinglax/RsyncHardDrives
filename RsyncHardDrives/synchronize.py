@@ -1,15 +1,6 @@
-import subprocess
-import smtplib
-from configobj import ConfigObj
-import sys
-import getpass
-import os
-import time
+import subprocess,sys, getpass, os, time, datetime, smtplib
 import TracWiki
-import datetime
-
-# Emailing libraries
-import smtplib
+from configobj import ConfigObj
 from email.mime.text import MIMEText
 
 # Gets Information from .ini file
@@ -27,11 +18,6 @@ from_email = config['email']['from_email']
 TWC = TracWiki.Trac_Wiki_Communicator(username='dzingler',
                                       password='dzingler',
                                       url=GateFusionProjectHard)
-
-def mount_hard_drive(): # TODO
-    ''' programatically mounts hard drive'''
-    # For now just make sure that drives are mounted
-    pass
 
 def get_mounted_drives():
     ''' checks which drives are mounted'''
@@ -59,11 +45,7 @@ def get_role_for_group(group_letter, role):
             return drive
     
 def get_drive_group(drive):
-    return hard_drives[drive][2]
-    
-def check_readme_files(): # TODO
-    ''' checks which files have and do not have a README.txt associated with them.'''
-    pass
+    return hard_drives[drive][2]    
 
 def get_readme_description(dir_or_file):
     ''' Gets a description string from a readme file for a directory or a file'''
@@ -160,69 +142,6 @@ def synchronize_hard_drives(primary_drive, local_backup_drive):
         
     return return_val
    
-def set_drive_roles_helper(group_letter):
-    ''' WARNING THIS METHOD IS DEPRICATED.
-    THIS METHOD DOES NOT CHECK MODIFICATION TIMES OF THE DRIVES WHICH COULD LEAD TO DATA LOSS'''
-    
-    ''' determins the functionality of each drive whether it is the Primary, Local Backup, or Offsite Backup.  Updates a .ini file to reflect changes'''
-    
-    for key in hard_drives:
-        if group_letter in key:
-            role = "teststring"
-            while (not role.isdigit()) or (role not in ['1','2','3']):
-                print "## Set " + key + " to?"
-                print "## 1. Primary" 
-                print "## 2. Local Backup"
-                print "## 3. Offsite Backup"
-                role = raw_input("## ENTER A ROLE NUMBER (1, 2, OR 3): ")
-                
-                if (not role.isdigit()) or (role not in ['1','2','3']):
-                    print '######################################################'                                
-                    print "## ERROR: Enter 1, 2, or 3, for a drive role."
-                    print '######################################################'            
-                    
-            if role == '1':
-                hard_drives[key][0] = 'primary'
-            elif role == '2':
-                hard_drives[key][0] = 'local_backup'
-            else:
-                hard_drives[key][0] = 'offsite_backup'
-      
-    if not check_group_roles(group_letter):
-        print '######################################################'            
-        print "## ERROR: Two drives detected with same value. Try again."
-        print '######################################################'            
-        
-        set_drive_roles_helper(group_letter)
-       
-    return hard_drives
-
-def set_drive_roles(group_letter):
-    ''' WARNING THIS METHOD IS DEPRICATED.
-    THIS METHOD DOES NOT CHECK MODIFICATION TIMES OF THE DRIVES WHICH COULD LEAD TO DATA LOSS'''
-    if group_letter in {'a', "A"}:
-        group_letter = 'A'
-    else:
-        group_letter = 'B'
-    
-    hard_drives = set_drive_roles_helper(group_letter)    
-    config['hard_drive'] = hard_drives
-    config.write()
-    
-    print '######################################################'    
-    print "## UPDATE COMPLETE ###################################"
-    for key in hard_drives:
-        if group_letter in key:
-            print "## Drive: " + key + " is set to: " + hard_drives[key][0]
-
-def set_drive_role(drive, role):
-    if (not role in {"primary", "local_backup", "offsite_backup"}) or (drive not in hard_drives.keys()):
-        print "The drive or role you submitted was not recognized, no changes made"
-    else:
-        hard_drives[drive][0] = role
-        config['hard_drive'] = hard_drives
-        config.write()
-
 def switch_primary_drive(group_letter):
     if group_letter in {'a', 'A'}:
         group_letter = "A"
@@ -419,9 +338,7 @@ def walking_files(directory):
 def send_email(to_email, from_email): # TODO
     
     # Create a text/plain message
-    msg = MIMEText("Disk replication is complete.")
-    
-    
+    msg = MIMEText("Disk replication is complete.")    
     msg['Subject'] = 'Disk replication'
     msg['From'] = from_email
     msg['To'] = to_email
@@ -469,24 +386,16 @@ def output_prompt_commands():
     
     print '######################################################'
     print '## COMMANDS ##########################################'
-    print '## 1. Change Drive Roles #############################'
-    print '## 2. Refresh Mounted Drives #########################'
-    print '## 3. Synchronize Hard Drvies ########################'
-    print '## 4. Update Wiki Pages ##############################'
-    print '## 5. Switch Local Backup and Offsite Backup ###################'
-    print '## 6. Switch Primary Drive ###########################'
-    print '## 7. Display Drive Info #############################'
-    command = input_command("## ENTER A COMMAND NUMBER: ", [str(x) for x in range(1,8)])
+    print '## 1. Refresh Mounted Drives #########################'
+    print '## 2. Synchronize Hard Drvies ########################'
+    print '## 3. Update Wiki Pages ##############################'
+    print '## 4. Switch Local Backup and Offsite Backup ###################'
+    print '## 5. Switch Primary Drive ###########################'
+    print '## 6. Display Drive Info #############################'
+    command = input_command("## ENTER A COMMAND NUMBER: ", [str(x) for x in range(1,7)])
     print '######################################################'
     return command
-
-def command_change_drive_roles():    
-    group_letter = input_command("## ENTER A GROUP LETTER (A OR B): ", {"A", "a","B","b"})    
-    if  not group_letter == 'exit':
-        set_drive_roles(group_letter) 
-    else:
-        print "## Exiting Command"    
-    
+  
 def command_refresh_mounted_drives():
     output_mounted_drives()
     
@@ -581,41 +490,23 @@ def input_command(prompt, accepted_values):
 if __name__=="__main__":
     
     print '######################################################'
-    print '### WELCOME TO THE HARD DRIVE SYNCHRONIZATION TOOL ###'
-        
-    output_mounted_drives()
-    
+    print '### WELCOME TO THE HARD DRIVE SYNCHRONIZATION TOOL ###'    
+    output_mounted_drives()    
     command = output_prompt_commands()    
     
     # Command Loop
-    while True:
-        
-        # COMMAND 1
+    while True:        
         if command == str(1):
-            command_change_drive_roles()
-            
-        # COMMAND 2
+            command_refresh_mounted_drives()            
         elif command == str(2):
-            command_refresh_mounted_drives()
-            
-        # COMMAND 3    
+            command_synchronize_hard_drives()            
         elif command == str(3):
-            command_synchronize_hard_drives()
-                         
-        # COMMAND 4
+            command_update_wiki_pages()                         
         elif command == str(4):
-            command_update_wiki_pages()
-              
-        # COMMAND 5          
+            command_switch_local_backup_and_offsite_backup()              
         elif command == str(5):
-            command_switch_local_backup_and_offsite_backup()
-        
-        # COMMAND 6     
+            command_switch_primary_drive()        
         elif command == str(6):
-            command_switch_primary_drive()
-                    
-        # COMMAND 7
-        elif command == str(7):
             command_display_drives()
         else:
             print '######################################################'   
