@@ -106,8 +106,6 @@ def check_group_roles(group_letter):
             found_roles.append(hard_drives[key][0])
     return all_roles == set(found_roles)
 
-  
-
 def synchronize_hard_drives(primary_drive, local_backup_drive): 
     ''' synchronizes hard drives using rsync'''    
     
@@ -161,9 +159,7 @@ def synchronize_hard_drives(primary_drive, local_backup_drive):
     config.write()    
         
     return return_val
-
-                
-    
+   
 def set_drive_roles_helper(group_letter):
     ''' WARNING THIS METHOD IS DEPRICATED.
     THIS METHOD DOES NOT CHECK MODIFICATION TIMES OF THE DRIVES WHICH COULD LEAD TO DATA LOSS'''
@@ -185,26 +181,20 @@ def set_drive_roles_helper(group_letter):
                     print "## ERROR: Enter 1, 2, or 3, for a drive role."
                     print '######################################################'            
                     
-            
             if role == '1':
                 hard_drives[key][0] = 'primary'
             elif role == '2':
                 hard_drives[key][0] = 'local_backup'
             else:
                 hard_drives[key][0] = 'offsite_backup'
-    
-        
+      
     if not check_group_roles(group_letter):
         print '######################################################'            
         print "## ERROR: Two drives detected with same value. Try again."
         print '######################################################'            
         
         set_drive_roles_helper(group_letter)
-        
-        
-     
-        
-        
+       
     return hard_drives
 
 def set_drive_roles(group_letter):
@@ -215,8 +205,7 @@ def set_drive_roles(group_letter):
     else:
         group_letter = 'B'
     
-    hard_drives = set_drive_roles_helper(group_letter)
-    
+    hard_drives = set_drive_roles_helper(group_letter)    
     config['hard_drive'] = hard_drives
     config.write()
     
@@ -249,44 +238,45 @@ def switch_primary_drive(group_letter):
     print '## CURRENT PRIMARY IS ' + primary
     print '## 1. Local Backup: ' + local_backup
     print '## 2. Offsite Backup: ' + offsite_backup
+        
+    choice = input_command("## ENTER DRIVE NUMBER TO SWITCH WITH PRIMARY: ", {'1', '2'})    
     
-    choice = None
-    while choice not in {'1', '2'}:
-        choice = raw_input("## ENTER DRIVE NUMBER TO SWITCH WITH PRIMARY: ")
+    if not choic == 'exit':
+        if choice == '1':
+            if  not hard_drives[primary][3] == hard_drives[local_backup][3]:
+                print '######################################################'
+                print '## ERROR: Modification dates are not correct. '
+                print '## Data could be lost if this change is made'
+                print '## The primary is must be synchronized with local_backup'
+                print '## before this change can take place. Exiting command.'
+                print '######################################################'
+                return
+            else:
+                hard_drives[primary][0] = 'local_backup'
+                hard_drives[local_backup][0] = 'primary'        
+        elif choice == '2':
+            if  not hard_drives[primary][3] == hard_drives[offsite_backup][3]:
+                print '######################################################'
+                print '## ERROR: Modification dates are not correct.'
+                print '## Data could be lost if this change is made'
+                print '## Try switching the offsite_backup to local_backup then'
+                print '## synchronizing, then switching primary again.'
+                print '## Exiting command...'
+                print '######################################################'
+                return 
+            else:
+                hard_drives[primary][0] = 'offsite_backup'
+                hard_drives[offsite_backup][0] = 'primary'      
     
-    if choice == '1':
-        if  not hard_drives[primary][3] == hard_drives[local_backup][3]:
-            print '######################################################'
-            print '## ERROR: Modification dates are not correct. '
-            print '## Data could be lost if this change is made'
-            print '## The primary is must be synchronized with local_backup'
-            print '## before this change can take place. Exiting command.'
-            print '######################################################'
-            return
-        else:
-            hard_drives[primary][0] = 'local_backup'
-            hard_drives[local_backup][0] = 'primary'        
+        config['hard_drive'] = hard_drives
+        config.write()    
+        print '######################################################'    
+        print '## UPDATE COMPLETED ##################################'
+        print '## Primary: ' + get_role_for_group(group_letter, "primary")
+        print '## Local Backup: ' + get_role_for_group(group_letter, "local_backup")
+        print '## Offsite Backup: ' + get_role_for_group(group_letter, "offsite_backup")
     else:
-        if  not hard_drives[primary][3] == hard_drives[offsite_backup][3]:
-            print '######################################################'
-            print '## ERROR: Modification dates are not correct.'
-            print '## Data could be lost if this change is made'
-            print '## Try switching the offsite_backup to local_backup then'
-            print '## synchronizing, then switching primary again.'
-            print '## Exiting command...'
-            print '######################################################'
-            return 
-        else:
-            hard_drives[primary][0] = 'offsite_backup'
-            hard_drives[offsite_backup][0] = 'primary'      
-
-    config['hard_drive'] = hard_drives
-    config.write()    
-    print '######################################################'    
-    print '## UPDATE COMPLETED ##################################'
-    print '## Primary: ' + get_role_for_group(group_letter, "primary")
-    print '## Local Backup: ' + get_role_for_group(group_letter, "local_backup")
-    print '## Offsite Backup: ' + get_role_for_group(group_letter, "offsite_backup")
+        print '## Command Exiting'
 
 def update_wiki(wiki_drive):
     
@@ -325,8 +315,7 @@ Information taken from the configuration file [[BR]]
     
     # Creating Home Page With TracWiki Class
     TWC.create_page('HardDriveSyncTool', page_text=HardDriveSyncTool_HomePage)
-    
-    
+        
     # Creating all of the Directory pages for selected drive
     mounted = get_mounted_drives()[0]
     if wiki_drive in mounted:
@@ -352,8 +341,7 @@ def update_wiki_helper(path, folder_name): # TODO
     for d in directories[:]:
         if '.' == d[0] or '~' == d[-1]:
             directories.remove(d)        
-            
-            
+                    
     # Removes README.txt Files
     for f in files[:]:
         try:
@@ -361,13 +349,7 @@ def update_wiki_helper(path, folder_name): # TODO
                 files.remove(f)
         except IndexError:
             continue
-    #for d in directories[:]:
-        #try:
-            #if 'README.txt' == d[-10]:
-                #directories.remove(d)
-        #except IndexError:
-            #continue        
-    
+  
     body_string = "= " + folder_name + " =\n"
 
     # Creates the Wiki Page Name
@@ -420,14 +402,8 @@ def update_wiki_helper(path, folder_name): # TODO
         body_string += "\n" + directory_table
     else:
         body_string += "\n=== No Directories in this Folder ==="
-        
-    ## Create Wikipage 
-    # create_wiki_page(username, password, body_string, wiki_page_name, project_name)
-    
                 
     TWC.create_page(page_name, body_string)
-    
-    #print body_string
 
     # Recurse Down to the next level of wiki pages
     for d in directories:
@@ -500,20 +476,16 @@ def output_prompt_commands():
     print '## 5. Switch Local Backup and Offsite Backup ###################'
     print '## 6. Switch Primary Drive ###########################'
     print '## 7. Display Drive Info #############################'
-    command = raw_input("## ENTER A COMMAND NUMBER: ")    
+    command = input_command("## ENTER A COMMAND NUMBER: ", [str(x) for x in range(1,8)])
     print '######################################################'
     return command
 
-def command_change_drive_roles():
-    group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")
-                
-    while group_letter not in {"A", "a","B","b"}:
-        print '######################################################'
-        print "## ERROR: PLEASE ENTER A OR B..."
-        print '######################################################'                     
-        
-        group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")
-    set_drive_roles(group_letter) 
+def command_change_drive_roles():    
+    group_letter = input_command("## ENTER A GROUP LETTER (A OR B): ", {"A", "a","B","b"})    
+    if  not group_letter == 'exit':
+        set_drive_roles(group_letter) 
+    else:
+        print "## Exiting Command"    
     
 def command_refresh_mounted_drives():
     output_mounted_drives()
@@ -527,27 +499,22 @@ def command_synchronize_hard_drives():
         if hard_drives[drive][0] == 'primary':
             count = count + 1
             print "## " + str(count) + ". " + drive
-            primaries[str(count)] = drive
+            primaries[str(count)] = drive    
     
-    primary = None
-    while primary not in primaries.keys():
-        primary = raw_input("## ENTER A PRIMARY DRIVE NUMBER: ")
-    
-    primary = primaries[primary]
-    
-    group_letter = hard_drives[primary][2]
-    local_backup = get_role_for_group(group_letter, 'local_backup')        
-    
-    print '######################################################'                
-    print '## Trying to Synchronize Data on'
-    print '## Primary Drive: ' + primary
-    print '## To existing data on'
-    print '## Local Backup Drive: ' + local_backup
-    
-    synchronize_hard_drives(primary, local_backup)
-    
-    
-    # Check if the local_backup has been synced later than the primary (or maybe more data on local_backup than primary)
+    # Input Primary Drive
+    primary = input_command("## ENTER A PRIMARY DRIVE NUMBER FOR WIKI UPDATE: ", primaries.keys())    
+    if not primary == 'exit':    
+        primary = primaries[primary]        
+        group_letter = hard_drives[primary][2]
+        local_backup = get_role_for_group(group_letter, 'local_backup')            
+        print '######################################################'                
+        print '## Trying to Synchronize Data on'
+        print '## Primary Drive: ' + primary
+        print '## To existing data on'
+        print '## Local Backup Drive: ' + local_backup        
+        synchronize_hard_drives(primary, local_backup) 
+    else:
+        print "## Exiting Command"
 
 def command_update_wiki_pages():
     primaries = {}
@@ -558,37 +525,30 @@ def command_update_wiki_pages():
         if hard_drives[drive][0] == 'primary':
             count = count + 1
             print "## " + str(count) + ". " + drive
-            primaries[str(count)] = drive
+            primaries[str(count)] = drive    
+
+    primary = input_command("## ENTER A PRIMARY DRIVE NUMBER FOR WIKI UPDATE: ", primaries.keys())
     
-    primary = None
-    while primary not in primaries.keys():
-        primary = raw_input("## ENTER A PRIMARY DRIVE NUMBER FOR WIKI UPDATE: ")
-    
-    primary = primaries[primary]      
-    
-    update_wiki(primary)    
+    if not primary == 'exit':    
+        primary = primaries[primary]          
+        update_wiki(primary)   
+    else:
+        print "## Exiting Command"
 
 def command_switch_local_backup_and_offsite_backup():
-    group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")                    
-    while group_letter not in {"A", "a","B","b"}:
-        print '######################################################'
-        print "## ERROR: PLEASE ENTER A OR B..."
-        print '######################################################'                                     
-        group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")                    
-    switch_local_backup_offsite_backup(group_letter)    
+    group_letter = input_command("## ENTER A GROUP LETTER (A OR B): ", {"A", "a","B","b"})    
+    if  not group_letter == 'exit':
+        switch_local_backup_offsite_backup(group_letter)    
+    else:
+        print "## Exiting Command"
 
 def command_switch_primary_drive():
-    group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")
-                            
-    while group_letter not in {"A", "a","B","b"}:
-        print '######################################################'
-        print "## ERROR: PLEASE ENTER A OR B..."
-        print '######################################################'                     
-        
-        group_letter = raw_input("## ENTER A GROUP LETTER (A OR B): ")
     
-    switch_primary_drive(group_letter)    
-    
+    group_letter = input_command("## ENTER A GROUP LETTER (A OR B): ", {"A", "a","B","b"})    
+    if  not group_letter == 'exit':
+        switch_primary_drive(group_letter)    
+    else:
+        print "## Exiting Command"
 
 def command_display_drives():
     print '######################################################'    
@@ -601,7 +561,22 @@ def command_display_drives():
         print '## MOUNT POINT: ' + hard_drives[d][1]
         print '## GROUP: ' + hard_drives[d][2]
         print '## LAST SYNCHRONIZED: ' + str(datetime.datetime.fromtimestamp(float(hard_drives[d][3])))
+
+def input_command(prompt, accepted_values):
+    ''' Method for taking in input from user'''
+    exit_values = {'e', 'Exit', 'E', 'Q', 'q', 'quit', 'exit'}
     
+    value = raw_input(prompt)        
+    while value not in accepted_values and value not in exit_values:
+        print '######################################################'        
+        print "ERROR: INPUT NOT ACCEPTED."
+        print '######################################################'        
+        value = raw_input(prompt) 
+        
+    if value in accepted_values:
+        return value
+    elif value in exit_values:
+        return 'exit'
 
 if __name__=="__main__":
     
