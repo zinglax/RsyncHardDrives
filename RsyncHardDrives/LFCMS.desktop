@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Exec=sh /home/eenabled/Desktop/GITHUBS/RsyncHardDrives/RsyncHardDrives/launcher.sh
+Name=Large File Content Management System
+GenericName=Large File Content Management System
+Comment=Synchronize Hardrives with this Tool
+Encoding=UTF-8
+Terminal=true
+Type=Application
+Icon=/home/eenabled/Desktop/GITHUBS/RsyncHardDrives/RsyncHardDrives/LFCMS.png
+Categories=Application;

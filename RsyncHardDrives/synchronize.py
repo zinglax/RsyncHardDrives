@@ -15,10 +15,14 @@ to_email = config['email']['to_email']
 from_email = config['email']['from_email']
 
 # Wiki Interaction ***USES HARD URL***
-TWC = TracWiki.Trac_Wiki_Communicator(username='dzingler',
-                                      password='dzingler',
-                                      url=GateFusionProjectHard)
-
+try: 
+    TWC = TracWiki.Trac_Wiki_Communicator(url=GateFusionProjectHard)
+except IndexError:
+    print 'failed to login. Exiting Program'
+    time.sleep(2.5)
+    sys.exit()
+ 
+    
 def get_mounted_drives():
     ''' checks which drives are mounted'''
     command = "mount | grep "
@@ -160,7 +164,7 @@ def switch_primary_drive(group_letter):
         
     choice = input_command("## ENTER DRIVE NUMBER TO SWITCH WITH PRIMARY: ", {'1', '2'})    
     
-    if not choic == 'exit':
+    if not choice == 'exit':
         if choice == '1':
             if  not hard_drives[primary][3] == hard_drives[local_backup][3]:
                 print '######################################################'
