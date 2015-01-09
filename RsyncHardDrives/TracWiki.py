@@ -93,7 +93,7 @@ if __name__=="__main__":
     gatefusion = "http://10.1.10.175/projects/gatefusion"
     
     TWC = Trac_Wiki_Communicator(username=usr, password=pwd, url=gatefusion)
-    TWC.create_page("HardDriveSyncTool/GrpADrv2", page_text="== TEST PAGE CREATED ==")
+    TWC.create_page("LargeFileContentManagementSystem/GrpADrv2", page_text="== TEST PAGE CREATED ==")
     
     # Set brake point or uncomment
-    TWC.delete_page("HardDriveSyncTool/GrpADrv2")
+    TWC.delete_page("LargeFileContentManagementSystem/GrpADrv2")

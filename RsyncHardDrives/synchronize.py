@@ -1,4 +1,4 @@
-import subprocess,sys, getpass, os, time, datetime, smtplib
+import subprocess,sys, getpass, os, time, datetime, smtplib, re
 import TracWiki
 from configobj import ConfigObj
 from email.mime.text import MIMEText
@@ -6,7 +6,7 @@ from email.mime.text import MIMEText
 # Gets Information from .ini file
 config = ConfigObj('hard_drive_roles.ini')
 hard_drives = config['hard_drive']
-HardDriveSyncTool = config['paths']["HardDriveSyncTool"]
+LargeFileContentManagementSystem = config['paths']["LargeFileContentManagementSystem"]
 GateFusionProject = config['paths']['GateFusionProject']
 GateFusionProjectHard = config['paths']['GateFusionProjectHard']
 
@@ -14,9 +14,9 @@ GateFusionProjectHard = config['paths']['GateFusionProjectHard']
 to_email = config['email']['to_email']
 from_email = config['email']['from_email']
 
-# Wiki Interaction ***USES HARD URL***
+# Wiki Interaction 
 try: 
-    TWC = TracWiki.Trac_Wiki_Communicator(url=GateFusionProjectHard)
+    TWC = TracWiki.Trac_Wiki_Communicator(url=GateFusionProject)
 except IndexError:
     print 'failed to login. Exiting Program'
     time.sleep(2.5)
@@ -98,44 +98,44 @@ def synchronize_hard_drives(primary_drive, local_backup_drive):
     # Check that drives are mounted 
     mounted = get_mounted_drives()[0]
     if not (primary_drive in mounted) or not (local_backup_drive in mounted):
-        print '######################################################'                        
-        print "## ERROR: One of the drives is not mounted, exiting command"        
-        print '######################################################'                        
+        print '                                                      '                        
+        print "   ERROR: One of the drives is not mounted, exiting command"        
+        print '                                                      '                        
         return "Drive not Mounted"
     
     # Checking that drives have proper roles
     if not(check_hard_drive_role(primary_drive, "primary")):
-        print '######################################################'                        
-        print "## Error: Primary drive does not have correct role"
-        print '######################################################'                        
+        print '                                                      '                        
+        print "   Error: Primary drive does not have correct role"
+        print '                                                      '                        
         return "Primary is Not Properly Labeled"
     if not(check_hard_drive_role(local_backup_drive, "local_backup")):
-        print '######################################################'                        
-        print "## Error: Local Backup drive does not have correct role"
-        print '######################################################'  
+        print '                                                      '                        
+        print "   Error: Local Backup drive does not have correct role"
+        print '                                                      '  
         return "Local Backup is Not Properly Labeled"
 
     # Checking Modification dates
     if not (hard_drives[primary_drive][3] >= hard_drives[local_backup_drive][3]):
-        print '######################################################'          
-        print '## ERROR: The Local Backup drive has a later modification date'
-        print '## Data could be lost if synchronization continued. Exiting.'
-        print '######################################################'  
+        print '                                                      '          
+        print '   ERROR: The Local Backup drive has a later modification date'
+        print '   Data could be lost if synchronization continued. Exiting.'
+        print '                                                      '  
         return "Modification dates are not correct"
         
     # Using rsync to synchronize drives and return output
-    print "## STARTING SYNCHRONIZATION ##########################"
-    print "## SEEING OUTPUT FROM RSYNC COMMAND ##################"
+    print "   STARTING SYNCHRONIZATION                           "
+    print "   SEEING OUTPUT FROM RSYNC COMMAND                   "
     rsync_command = "rsync -zvhr --delete --info=progress2 " + hard_drives[primary_drive][1] + "/ " + hard_drives[local_backup_drive][1]   # + " > RSYNC.txt"
     return_val = subprocess.call(rsync_command, shell=True)
     
     if return_val == 0:
-        print '######################################################'          
-        print "## SYNCRONIZATION COMPLETED AND SUCCESSFUL ###########"
+        print '                                                      '          
+        print "   SYNCRONIZATION COMPLETED AND SUCCESSFUL           #"
     else:    
-        print '######################################################'  
-        print '## ERROR: Synchronization did not complete successfuly'
-        print '######################################################'  
+        print '                                                      '  
+        print '   ERROR: Synchronization did not complete successfuly'
+        print '                                                      '  
         
     sync_time = time.time()
     hard_drives[primary_drive][3] = sync_time
@@ -158,34 +158,34 @@ def switch_primary_drive(group_letter):
         offsite_backup = get_role_for_group('B', 'offsite_backup')
         primary = get_role_for_group('B', 'primary')
         
-    print '## CURRENT PRIMARY IS ' + primary
-    print '## 1. Local Backup: ' + local_backup
-    print '## 2. Offsite Backup: ' + offsite_backup
+    print '   CURRENT PRIMARY IS ' + primary
+    print '   1. Local Backup: ' + local_backup
+    print '   2. Offsite Backup: ' + offsite_backup
         
-    choice = input_command("## ENTER DRIVE NUMBER TO SWITCH WITH PRIMARY: ", {'1', '2'})    
+    choice = input_command("   ENTER DRIVE NUMBER TO SWITCH WITH PRIMARY: ", {'1', '2'})    
     
     if not choice == 'exit':
         if choice == '1':
             if  not hard_drives[primary][3] == hard_drives[local_backup][3]:
-                print '######################################################'
-                print '## ERROR: Modification dates are not correct. '
-                print '## Data could be lost if this change is made'
-                print '## The primary is must be synchronized with local_backup'
-                print '## before this change can take place. Exiting command.'
-                print '######################################################'
+                print '                                                      '
+                print '   ERROR: Modification dates are not correct. '
+                print '   Data could be lost if this change is made'
+                print '   The primary is must be synchronized with local_backup'
+                print '   before this change can take place. Exiting command.'
+                print '                                                      '
                 return
             else:
                 hard_drives[primary][0] = 'local_backup'
                 hard_drives[local_backup][0] = 'primary'        
         elif choice == '2':
             if  not hard_drives[primary][3] == hard_drives[offsite_backup][3]:
-                print '######################################################'
-                print '## ERROR: Modification dates are not correct.'
-                print '## Data could be lost if this change is made'
-                print '## Try switching the offsite_backup to local_backup then'
-                print '## synchronizing, then switching primary again.'
-                print '## Exiting command...'
-                print '######################################################'
+                print '                                                      '
+                print '   ERROR: Modification dates are not correct.'
+                print '   Data could be lost if this change is made'
+                print '   Try switching the offsite_backup to local_backup then'
+                print '   synchronizing, then switching primary again.'
+                print '   Exiting command...'
+                print '                                                      '
                 return 
             else:
                 hard_drives[primary][0] = 'offsite_backup'
@@ -193,26 +193,26 @@ def switch_primary_drive(group_letter):
     
         config['hard_drive'] = hard_drives
         config.write()    
-        print '######################################################'    
-        print '## UPDATE COMPLETED ##################################'
-        print '## Primary: ' + get_role_for_group(group_letter, "primary")
-        print '## Local Backup: ' + get_role_for_group(group_letter, "local_backup")
-        print '## Offsite Backup: ' + get_role_for_group(group_letter, "offsite_backup")
+        print '                                                      '    
+        print '   UPDATE COMPLETED                                   '
+        print '   Primary: ' + get_role_for_group(group_letter, "primary")
+        print '   Local Backup: ' + get_role_for_group(group_letter, "local_backup")
+        print '   Offsite Backup: ' + get_role_for_group(group_letter, "offsite_backup")
     else:
-        print '## Command Exiting'
+        print '   Command Exiting'
 
 def update_wiki(wiki_drive):
     
-    HardDriveSyncTool_HomePage = '''= Hard Drive Synchronization Tool =
+    LargeFileContentManagementSystem_HomePage = '''= Large File Content Management System =
 
-This page documents the hard drive synchronization tool which is used for backing-up/synchronizing hard drives (mainly the two 2TB hard drives for the project stored locally and the third offsite_backup). 
+This page documents the Large File Content Management System which is used for backing-up/synchronizing hard drives (mainly the two 2TB hard drives for the project stored locally and the third offsite_backup). 
 
 ------------------------------
 
-== [wiki:HardDriveSyncTool/GrpA Group A] == 
+== [wiki:LargeFileContentManagementSystem/GrpA Group A] == 
 
 
-== [wiki:HardDriveSyncTool/GrpB Group B] == 
+== [wiki:LargeFileContentManagementSystem/GrpB Group B] == 
 
 
 --------------------------------------
@@ -220,8 +220,12 @@ This page documents the hard drive synchronization tool which is used for backin
 Information taken from the configuration file [[BR]]
 %s
 ---------------------------------------
+[[Image(https://raw.githubusercontent.com/zinglax/RsyncHardDrives/master/RsyncHardDrives/LFCMS.png)]]
 
-== Documentation =='''
+== Documentation ==
+The Large File Management System (LFMS) is a tool that keeps large files backed up on a group of 3 different drives.  Within a group, there are 3 different 'Roles' that a drive can have; 1. Primary, 2. Local Backup, 3. Offsite Backup.  The purpose of the Primary drive is to have the latest files/information intended to be stored/backed-up with the system. The Primary drive is the only drive that should ever be written to.  This drive is one that will copy its data to the other drives in the system.  The Local Backup drive is on site and intended to be a complete backup of the primary (after synchronization takes place).  Reading or copying files off of this drive will not interfere with the LFMS life cycle.  Writing to this drive will result in that new data being overwritten/deleted with information from the Primary drive. DO NOT WRITE DATA TO THE LOCAL BACKUP OR OFFSITE BACKUP, DATA WILL BE LOST. The Offsite Backup functions like the Local Backup in the sense that they will both be copies of what is on the Primary drive. The Offsite backup and Local Backup will be swapped out for each other periodically in order to keep the data in sync.  The roles of the drives must be changed at this point in order to run the synchronization.  Only the drive whose role is Local Backup can be synchronized with the Primary.
+
+'''
     
     
     # Table of drive information from .ini file
@@ -235,10 +239,10 @@ Information taken from the configuration file [[BR]]
                                              datetime.datetime.fromtimestamp(float(hard_drives[drive][3]))) + '\n'
     drive_table += '\n Last Modified: ' + str(datetime.datetime.now())
     
-    HardDriveSyncTool_HomePage = HardDriveSyncTool_HomePage % (drive_table)
+    LargeFileContentManagementSystem_HomePage = LargeFileContentManagementSystem_HomePage % (drive_table)
     
     # Creating Home Page With TracWiki Class
-    TWC.create_page('HardDriveSyncTool', page_text=HardDriveSyncTool_HomePage)
+    TWC.create_page('LargeFileContentManagementSystem', page_text=LargeFileContentManagementSystem_HomePage)
         
     # Creating all of the Directory pages for selected drive
     mounted = get_mounted_drives()[0]
@@ -251,15 +255,22 @@ Information taken from the configuration file [[BR]]
         path = hard_drives[wiki_drive][1]
         update_wiki_helper(path, folder_name)
     else:
-        print '## Primary drive used for Wiki Update is not mounted.'
-        print '## Only updated Home Page. Try mounting and reupdating.'
+        print '   Primary drive used for Wiki Update is not mounted.'
+        print '   Only updated Home Page. Try mounting and reupdating.'
     
 def update_wiki_helper(path, folder_name): # TODO
     ''' Updates the wiki page with each of the drives information and file info'''
     
     # Gets files and directories for current path
     files = os.walk(path).next()[2]
-    directories = os.walk(path).next()[1]    
+    directories = os.walk(path).next()[1] 
+    
+    for p in hard_drives.keys():
+        if hard_drives[p][1] in path:
+            drive_path = path[path.find(hard_drives[p][1])+len(hard_drives[p][1]):]
+            drive_path = 'Grp' + hard_drives[p][2] + drive_path
+            break
+        
     
     # Removes hidden or '~' edited files and directories
     for f in files[:]:
@@ -283,9 +294,9 @@ def update_wiki_helper(path, folder_name): # TODO
     for drive in hard_drives:
         if hard_drives[drive][1] in path:
             if hard_drives[drive][2] == "A":
-                page_name = path.replace(hard_drives[drive][1], "HardDriveSyncTool/GrpA")
+                page_name = path.replace(hard_drives[drive][1], "LargeFileContentManagementSystem/GrpA")
             else:
-                page_name = path.replace(hard_drives[drive][1], "HardDriveSyncTool/GrpB")
+                page_name = path.replace(hard_drives[drive][1], "LargeFileContentManagementSystem/GrpB")
 
     # Create Files Table
     if not len(files) == 0:
@@ -296,7 +307,7 @@ def update_wiki_helper(path, folder_name): # TODO
             info = os.stat(path + '/' + f)
             size = str(info.st_size) + " Bytes"
             modified_date = time.ctime(info.st_mtime)
-            full_path = path + '/' + f
+            full_path = drive_path + '/' + f
             file_table += '\n' + file_table_format % (f, 
                                                       size, 
                                                       modified_date, 
@@ -317,7 +328,7 @@ def update_wiki_helper(path, folder_name): # TODO
             info = os.stat(path + '/' + d)
             size = str(info.st_size) + " Bytes"
             modified_date = time.ctime(info.st_mtime)
-            full_path = path + '/' + d
+            full_path = drive_path + '/' + d
             directory_table += '\n' + directory_table_format % (page_name + '/' + d,
                                                                 d, 
                                                                 size, 
@@ -347,7 +358,7 @@ def send_email(to_email, from_email, msg):
     
     # Create a text/plain message
     msg = MIMEText(msg)    
-    msg['Subject'] = 'Hard Drive Synchronization Tool'
+    msg['Subject'] = 'Large File Content Management System'
     msg['From'] = from_email
     msg['To'] = to_email
     
@@ -371,38 +382,40 @@ def switch_local_backup_offsite_backup(group_letter):
     
     config['hard_drive'] = hard_drives
     config.write()    
-    print '######################################################'
-    print '## UPDATE COMPLETED ##################################'
-    print '## LOCAL BACKUP IS NOW: ' + offsite_backup
-    print '## OFFSITE BACKUP IS NOW: ' + local_backup
+    print '                                                      '
+    print '   UPDATE COMPLETED                                   '
+    print '   LOCAL BACKUP IS NOW: ' + offsite_backup
+    print '   OFFSITE BACKUP IS NOW: ' + local_backup
         
 def output_mounted_drives():
-    print '######################################################'    
-    print '## CURRENT DRIVES MOUNTED ############################'
+    print '                                                      '    
+    print '   CURRENT DRIVES MOUNTED                             '
         
     mounted = get_mounted_drives()[0]
     if len(mounted) == 0:
-        print '## There are no drives currently mounted'
+        print '   There are no drives currently mounted'
     else:
         for i, d in enumerate(mounted):
-            print '## ' + str(i+1) + '. ' + d    
+            print '   ' + str(i+1) + '. ' + d    
 
-    print '######################################################'    
+    print '                                                      '    
                 
 
 def output_prompt_commands():
     
-    print '######################################################'
-    print '## COMMANDS ##########################################'
-    print '## 1. Refresh Mounted Drives #########################'
-    print '## 2. Synchronize Hard Drvies ########################'
-    print '## 3. Update Wiki Pages ##############################'
-    print '## 4. Switch Local Backup and Offsite Backup #########'
-    print '## 5. Switch Primary Drive ###########################'
-    print '## 6. Display Drive Info #############################'
-    print '## Ctrl-c To exit the program ########################'
-    command = input_command("## ENTER A COMMAND NUMBER: ", [str(x) for x in range(1,7)])
-    print '######################################################'
+    print '                                                      '
+    print '   COMMANDS                                           '
+    print '   1. Refresh Mounted Drives                         '
+    print '   2. Synchronize Hard Drvies                         '
+    print '   3. Update Wiki Pages                               '
+    print '   4. Switch Local Backup and Offsite Backup         '
+    print '   5. Switch Primary Drive                           '
+    print '   6. Display Drive Info                             '
+    print '   H or Help for help/info '
+    print '   S or Settigns for Settings'
+    print '   Ctrl-c To exit the program'
+    command = input_command("   ENTER A COMMAND NUMBER: ", [str(x) for x in range(1,7)] + ["h", 'H', 'Help', 'help'] + ['s', 'S', 'Settings', 'settings'])
+    print '                                                      '
     return command
   
 def command_refresh_mounted_drives():
@@ -412,90 +425,142 @@ def command_synchronize_hard_drives():
     primaries = {}
     count = 0
     # Select a Primary Drive to Synchronize
-    print "## PRIMARY DRIVES ####################################"
+    print "   PRIMARY DRIVES                                     "
     for i, drive in enumerate(hard_drives):
         if hard_drives[drive][0] == 'primary':
             count = count + 1
-            print "## " + str(count) + ". " + drive
+            print "   " + str(count) + ". " + drive
             primaries[str(count)] = drive    
     
     # Input Primary Drive
-    primary = input_command("## ENTER A PRIMARY DRIVE NUMBER FOR WIKI UPDATE: ", primaries.keys())    
+    primary = input_command("   ENTER A PRIMARY DRIVE NUMBER FOR WIKI UPDATE: ", primaries.keys())    
     if not primary == 'exit':    
         primary = primaries[primary]        
         group_letter = hard_drives[primary][2]
         local_backup = get_role_for_group(group_letter, 'local_backup')            
-        print '######################################################'                
-        print '## Trying to Synchronize Data on'
-        print '## Primary Drive: ' + primary
-        print '## To existing data on'
-        print '## Local Backup Drive: ' + local_backup        
+        print '                                                      '                
+        print '   Trying to Synchronize Data on'
+        print '   Primary Drive: ' + primary
+        print '   To existing data on'
+        print '   Local Backup Drive: ' + local_backup        
         synchronize_hard_drives(primary, local_backup) 
         
         
         msg = """Synchronization of the primary drive %s and local backup drive %s is now COMPLETED.
-        thanks for using the Hard Drive Synchronization Tool""" % (primary, local_backup)
+        thanks for using the Large File Content Management System""" % (primary, local_backup)
         
         send_email(to_email,from_email, msg)
         
     else:
-        print "## Exiting Command"
+        print "   Exiting Command"
 
 def command_update_wiki_pages():
     primaries = {}
     count = 0            
-    print '######################################################' 
-    print "## PRIMARY DRIVES ####################################"
+    print '                                                      ' 
+    print "   PRIMARY DRIVES                                     "
     for i, drive in enumerate(hard_drives):
         if hard_drives[drive][0] == 'primary':
             count = count + 1
-            print "## " + str(count) + ". " + drive
+            print "   " + str(count) + ". " + drive
             primaries[str(count)] = drive    
 
-    primary = input_command("## ENTER A PRIMARY DRIVE NUMBER FOR WIKI UPDATE: ", primaries.keys())
+    primary = input_command("   ENTER A PRIMARY DRIVE NUMBER FOR WIKI UPDATE: ", primaries.keys())
     
     if not primary == 'exit':    
         primary = primaries[primary]          
         update_wiki(primary)   
     else:
-        print "## Exiting Command"
+        print "   Exiting Command"
 
 def command_switch_local_backup_and_offsite_backup():
-    group_letter = input_command("## ENTER A GROUP LETTER (A OR B): ", {"A", "a","B","b"})    
+    group_letter = input_command("   ENTER A GROUP LETTER (A OR B): ", {"A", "a","B","b"})    
     if  not group_letter == 'exit':
         switch_local_backup_offsite_backup(group_letter)    
     else:
-        print "## Exiting Command"
+        print "   Exiting Command"
 
 def command_switch_primary_drive():
     
-    group_letter = input_command("## ENTER A GROUP LETTER (A OR B): ", {"A", "a","B","b"})    
+    group_letter = input_command("   ENTER A GROUP LETTER (A OR B): ", {"A", "a","B","b"})    
     if  not group_letter == 'exit':
         switch_primary_drive(group_letter)    
     else:
-        print "## Exiting Command"
+        print "   Exiting Command"
 
 def command_display_drives():
-    print '######################################################'    
-    print '## INFORMATION STORED IN SYNCHRONIZATION TOOL ########'
+    print '                                                      '    
+    print '   INFORMATION STORED IN SYNCHRONIZATION TOOL         '
     
     for d in hard_drives:
-        print '######################################################'            
-        print '## DRIVE: '+ d 
-        print '## ROLE: ' + hard_drives[d][0]
-        print '## MOUNT POINT: ' + hard_drives[d][1]
-        print '## GROUP: ' + hard_drives[d][2]
-        print '## LAST SYNCHRONIZED: ' + str(datetime.datetime.fromtimestamp(float(hard_drives[d][3])))
+        print '                                                      '            
+        print '   DRIVE: '+ d 
+        print '   ROLE: ' + hard_drives[d][0]
+        print '   MOUNT POINT: ' + hard_drives[d][1]
+        print '   GROUP: ' + hard_drives[d][2]
+        print '   LAST SYNCHRONIZED: ' + str(datetime.datetime.fromtimestamp(float(hard_drives[d][3])))
+
+def command_help():
+    print " HELP FOR LARGE FILE CONTENT MANAGEMENT SYSTEM"
+    print 'COMMANDS:'
+    print '1. Refresh Mounted Drives: refreshes/checks again which drives are currently mounted and outputs them. '
+    print '2. Synchronize Hard Drvies: synchronize data from a groups primary drive to their secondary drive, will send email to designated email address when finished.  A drive listed as Primary and another as Local Backup in the same group must be mounted.  The Primary drive must have the latest modification date for this operation to carry out.'
+    print '3. Update Wiki Pages: Updates wiki pages with a primary drives information. Creates pages under wiki/LargeFileContentManagementSystem/. A primary drive must be mounted to carryout this operation'
+    print '4. Switch Local Backup and Offsite Backup: This switches which drive is the Local Backup and Offsite Backup.  This operation will always carry out if selected. '
+    print '5. Switch Primary Drive: Switching the primary drive to either the Local Backup or Offsite Backup. The new Primary drive must have at least the latest modification date.  If operation does not take place, a synchronization and switching of drives might have to occur first before the Primary can be swapped out. This is to ensure that no data will be lost during the synchronization process.'
+    print '6. Display Drive Info: Shows that each of the drives in the system is currently listed as.  Reads the configuration file for this information.'
+    print 'Ctrl-c exits the program. Help can be displayed by typing h, H, help, or Help.'
+    print 'While in the middle of a command you can quit the command by typing either e, E, exit, Exit, Q, q, quit, or Quit'
+    print 'The Large File Content Management System was designed by Dylan Zingler, dzingler@arinc.com January 2015.'
+
+def command_settings():
+    print """
+1. Email Settings
+
+q to quit command
+    """
+    
+    command = input_command(" Please Select A Number To Configure: ", {'1'})
+    
+    if command == 'exit':
+        return
+    else:
+        # Email Configuration
+        if command == str(1):
+            print "Configuring Email.  An email is sent after synchronization by LFCMS"
+            to = raw_input("Enter An Email Address To Send To: ")            
+            while not re.match(r"[^@]+@[^@]+\.[^@]+", to):
+                if to in {'e', 'Exit', 'E', 'Q', 'q', 'quit', 'Quit', 'exit'}:
+                    print "Quitting Settings"
+                    return   
+                print "  Error Email Entered Is not Formatted correctly. Be sure to include @ sign"                
+                to = raw_input("Enter An Email Address To Send To: ")
+            from_ = raw_input("Enter An Email Address To Send From (Must Be an Arinc Email Address): ")
+            while not (re.match(r"[^@]+@[^@]+\.[^@]+", to) and from_[-len('@arinc.com'):] == '@arinc.com'):
+                if from_ in {'e', 'Exit', 'E', 'Q', 'q', 'quit', 'Quit', 'exit'}:
+                    print "Quitting Settings"
+                    return           
+                print "  Error Email Entered Is not Formatted correctly. Be sure to include @ sign and that it is an arinc email address (@arinc.com)"                
+                from_ = raw_input("Enter An Email Address To Send From (Must Be an Arinc Email Address): ")
+                
+             
+            config['email']['to_email'] = to
+            config['email']['from_email'] = from_
+            config.write()    
+            print "Changed To Email Address to: " + to + ' and From Email Address to: ' + from_
+            
+        command_settings()
+        
 
 def input_command(prompt, accepted_values):
     ''' Method for taking in input from user'''
-    exit_values = {'e', 'Exit', 'E', 'Q', 'q', 'quit', 'exit'}
+    exit_values = {'e', 'Exit', 'E', 'Q', 'q', 'quit', 'Quit', 'exit'}
     
     value = raw_input(prompt)        
     while value not in accepted_values and value not in exit_values:
-        print '######################################################'        
+        print '                                                      '        
         print "ERROR: INPUT NOT ACCEPTED."
-        print '######################################################'        
+        print '                                                      '        
         value = raw_input(prompt) 
         
     if value in accepted_values:
@@ -505,33 +570,39 @@ def input_command(prompt, accepted_values):
 
 if __name__=="__main__":
     
-    print '######################################################'
-    print '### WELCOME TO THE HARD DRIVE SYNCHRONIZATION TOOL ###'    
+    print '                                                      '
+    print '  # WELCOME TO THE LARGE FILE CONTENT MANAGEMENT SYSTEM #'    
     output_mounted_drives()    
     command = output_prompt_commands()    
     
     # Command Loop
     while True:        
         if command == str(1):
-            print "## SELECTED: Refresh Mounted Drives Command"
+            print "   SELECTED: Refresh Mounted Drives Command"
             command_refresh_mounted_drives()            
         elif command == str(2):
-            print "## SELECTED: Synchronize Hard Drvies Command"
+            print "   SELECTED: Synchronize Hard Drvies Command"
             command_synchronize_hard_drives()            
         elif command == str(3):
-            print "## SELECTED: Update Wiki Pages Command"
+            print "   SELECTED: Update Wiki Pages Command"
             command_update_wiki_pages()                         
         elif command == str(4):
-            print "## SELECTED: Switch Local Backup and Offsite Backup Command"
+            print "   SELECTED: Switch Local Backup and Offsite Backup Command"
             command_switch_local_backup_and_offsite_backup()              
         elif command == str(5):
-            print "## SELECTED: Switch Primary Drive Command"
+            print "   SELECTED: Switch Primary Drive Command"
             command_switch_primary_drive()        
         elif command == str(6):
-            print "## SELECTED: Display Drive Info Command"            
+            print "   SELECTED: Display Drive Info Command"            
             command_display_drives()
+        elif command in {"h", 'H', 'Help', 'help'}:
+            print "   SELECTED: Help"
+            command_help()
+        elif command in {'s', 'S', 'Settings', 'settings'}:
+            print "   SELECTED: Settings"                        
+            command_settings()
         else:
-            print '######################################################'   
-            print '## ERROR: Command not recognized. Try again'
+            print '                                                      '   
+            print '   ERROR: Command not recognized. Try again'
         command = output_prompt_commands()
         
