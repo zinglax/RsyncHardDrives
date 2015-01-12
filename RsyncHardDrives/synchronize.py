@@ -11,7 +11,7 @@ GateFusionProject = config['paths']['GateFusionProject']
 GateFusionProjectHard = config['paths']['GateFusionProjectHard']
 
 # Alert email
-to_email = config['email']['to_email']
+to_emails = config['email']['to_emails']
 from_email = config['email']['from_email']
 
 # Wiki Interaction 
@@ -53,7 +53,7 @@ def get_drive_group(drive):
 
 def get_readme_description(dir_or_file):
     ''' Gets a description string from a readme file for a directory or a file'''
-    readme_file = dir_or_file + "README.txt"
+    readme_file = dir_or_file + ".README.txt"
     
     try: 
         with open(readme_file) as readme:
@@ -203,7 +203,7 @@ def switch_primary_drive(group_letter):
 
 def update_wiki(wiki_drive):
     
-    LargeFileContentManagementSystem_HomePage = '''= Large File Content Management System =
+    LargeFileContentManagementSystem_HomePage = """= Large File Content Management System =
 
 This page documents the Large File Content Management System which is used for backing-up/synchronizing hard drives (mainly the two 2TB hard drives for the project stored locally and the third offsite_backup). 
 
@@ -223,9 +223,31 @@ Information taken from the configuration file [[BR]]
 [[Image(https://raw.githubusercontent.com/zinglax/RsyncHardDrives/master/RsyncHardDrives/LFCMS.png)]]
 
 == Documentation ==
-The Large File Management System (LFMS) is a tool that keeps large files backed up on a group of 3 different drives.  Within a group, there are 3 different 'Roles' that a drive can have; 1. Primary, 2. Local Backup, 3. Offsite Backup.  The purpose of the Primary drive is to have the latest files/information intended to be stored/backed-up with the system. The Primary drive is the only drive that should ever be written to.  This drive is one that will copy its data to the other drives in the system.  The Local Backup drive is on site and intended to be a complete backup of the primary (after synchronization takes place).  Reading or copying files off of this drive will not interfere with the LFMS life cycle.  Writing to this drive will result in that new data being overwritten/deleted with information from the Primary drive. DO NOT WRITE DATA TO THE LOCAL BACKUP OR OFFSITE BACKUP, DATA WILL BE LOST. The Offsite Backup functions like the Local Backup in the sense that they will both be copies of what is on the Primary drive. The Offsite backup and Local Backup will be swapped out for each other periodically in order to keep the data in sync.  The roles of the drives must be changed at this point in order to run the synchronization.  Only the drive whose role is Local Backup can be synchronized with the Primary.
+The Large File Content Management System (LFCMS) is a tool that keeps large files backed up on a group of 3 different drives.  Within a group, there are 3 different 'Roles' that a drive can have; 1. Primary, 2. Local Backup, 3. Offsite Backup.  The purpose of the Primary drive is to have the latest files/information intended to be stored/backed-up with the system. 
+[[BR]][[BR]]
+The Primary drive is the only drive that should ever be written to.  This drive is one that will copy its data to the other drives in the system.  
+[[BR]][[BR]]
+The Local Backup drive is on site and intended to be a complete backup of the primary (after synchronization takes place).  Reading or copying files off of this drive will not interfere with the LFMS life cycle.  Writing to this drive will result in that new data being overwritten/deleted with information from the Primary drive. DO NOT WRITE DATA TO THE LOCAL BACKUP OR OFFSITE BACKUP, DATA WILL BE LOST. 
+[[BR]][[BR]]
+The Offsite Backup functions like the Local Backup in the sense that they will both be copies of what is on the Primary drive. The Offsite backup and Local Backup will be swapped out for each other periodically in order to keep the data in sync.  The roles of the drives must be changed at this point in order to run the synchronization.  Only the drive whose role is Local Backup can be synchronized with the Primary.
+[[BR]][[BR]]
+'''README.txt Files'''
+[[BR]]
+For information to show in the 'Notes' section in the files and directories tables, a README.txt file must be present in the same directory as that directory or file.  The README.txt file must be prefixed with a period and the complete name of the file or directory you are trying to document.
+[[BR]]
+'''Example:'''
+[[BR]]
+''File Name'' = eTechLog.ova
+[[BR]]
+''README File Name'' = eTechLog.ova.README.txt
+[[BR]]
+''Directory Name'' = AeroSync2E4/
+[[BR]]
+''README File Name'' = AeroSync2E4.README.txt (NOTE: This file must be located on the same level as the directory it is describing.  The README.txt must have the same parent folder as the file it describes.)
+[[BR]][[BR]]
+The README.txt file must contain a line starting with Description: and must be at most one line of the file.  This part of the README.txt will be displayed under the 'Notes' section in the file and directories tables. 
 
-'''
+"""
     
     
     # Table of drive information from .ini file
@@ -283,7 +305,7 @@ def update_wiki_helper(path, folder_name): # TODO
     # Removes README.txt Files
     for f in files[:]:
         try:
-            if 'README.txt' == f[-10:]:
+            if '.README.txt' == f[-11:]:
                 files.remove(f)
         except IndexError:
             continue
@@ -312,7 +334,7 @@ def update_wiki_helper(path, folder_name): # TODO
                                                       size, 
                                                       modified_date, 
                                                       full_path, 
-                                                      get_readme_description(full_path)
+                                                      get_readme_description(path + '/' + f)
                                                       )
             
         body_string += file_table
@@ -334,7 +356,7 @@ def update_wiki_helper(path, folder_name): # TODO
                                                                 size, 
                                                                 modified_date, 
                                                                 full_path, 
-                                                                get_readme_description(full_path)
+                                                                get_readme_description(path + '/' + d)
                                                                 )
         
         body_string += "\n" + directory_table
@@ -354,20 +376,20 @@ def walking_files(directory):
         for name in dirs:
             print(os.path.join(root, name))    
 
-def send_email(to_email, from_email, msg): 
+def send_email(to_emails, from_email, msg): 
     
     # Create a text/plain message
     msg = MIMEText(msg)    
     msg['Subject'] = 'Large File Content Management System'
     msg['From'] = from_email
-    msg['To'] = to_email
+    msg['To'] = str(to_emails)
     
     # Send the message via our own SMTP server, but don't include the
     # envelope header.
     s = smtplib.SMTP('cismailrelay.arinc.com')
-    s.sendmail(from_email, [to_email], msg.as_string())
+    s.sendmail(from_email, to_emails, msg.as_string())
     s.quit()    
-    return "Email Sent"
+    return "Sent Email"
 
 def switch_local_backup_offsite_backup(group_letter):
     if group_letter in {'a', 'A'}:
@@ -412,7 +434,7 @@ def output_prompt_commands():
     print '   5. Switch Primary Drive                           '
     print '   6. Display Drive Info                             '
     print '   H or Help for help/info '
-    print '   S or Settigns for Settings'
+    print '   S or Settings for Settings'
     print '   Ctrl-c To exit the program'
     command = input_command("   ENTER A COMMAND NUMBER: ", [str(x) for x in range(1,7)] + ["h", 'H', 'Help', 'help'] + ['s', 'S', 'Settings', 'settings'])
     print '                                                      '
@@ -442,14 +464,17 @@ def command_synchronize_hard_drives():
         print '   Trying to Synchronize Data on'
         print '   Primary Drive: ' + primary
         print '   To existing data on'
-        print '   Local Backup Drive: ' + local_backup        
-        synchronize_hard_drives(primary, local_backup) 
+        print '   Local Backup Drive: ' + local_backup
         
+        start_sync_time = datetime.datetime.now().replace(microsecond=0)
+        synchronize_hard_drives(primary, local_backup)         
+        end_sync_time = datetime.datetime.now().replace(microsecond=0)
+        print '   Synchronization took ' + str(end_sync_time-start_sync_time)
         
-        msg = """Synchronization of the primary drive %s and local backup drive %s is now COMPLETED.
-        thanks for using the Large File Content Management System""" % (primary, local_backup)
+        msg = """Synchronization of the primary drive %s and local backup drive %s is now COMPLETED. The Synchronization process took %s to complete
+        Thanks for using the Large File Content Management System""" % (primary, local_backup, str(end_sync_time-start_sync_time))
         
-        send_email(to_email,from_email, msg)
+        send_email(to_emails,from_email, msg)
         
     else:
         print "   Exiting Command"
@@ -503,14 +528,14 @@ def command_display_drives():
 def command_help():
     print " HELP FOR LARGE FILE CONTENT MANAGEMENT SYSTEM"
     print 'COMMANDS:'
-    print '1. Refresh Mounted Drives: refreshes/checks again which drives are currently mounted and outputs them. '
-    print '2. Synchronize Hard Drvies: synchronize data from a groups primary drive to their secondary drive, will send email to designated email address when finished.  A drive listed as Primary and another as Local Backup in the same group must be mounted.  The Primary drive must have the latest modification date for this operation to carry out.'
-    print '3. Update Wiki Pages: Updates wiki pages with a primary drives information. Creates pages under wiki/LargeFileContentManagementSystem/. A primary drive must be mounted to carryout this operation'
-    print '4. Switch Local Backup and Offsite Backup: This switches which drive is the Local Backup and Offsite Backup.  This operation will always carry out if selected. '
-    print '5. Switch Primary Drive: Switching the primary drive to either the Local Backup or Offsite Backup. The new Primary drive must have at least the latest modification date.  If operation does not take place, a synchronization and switching of drives might have to occur first before the Primary can be swapped out. This is to ensure that no data will be lost during the synchronization process.'
-    print '6. Display Drive Info: Shows that each of the drives in the system is currently listed as.  Reads the configuration file for this information.'
+    print '1. Refresh Mounted Drives: refreshes/checks again which drives are currently mounted and outputs them. \n\n'
+    print '2. Synchronize Hard Drvies: synchronize data from a groups primary drive to their secondary drive, will send email to designated email address when finished.  A drive listed as Primary and another as Local Backup in the same group must be mounted.  The Primary drive must have the latest modification date for this operation to carry out. \n\n'
+    print '3. Update Wiki Pages: Updates wiki pages with a primary drives information. Creates pages under wiki/LargeFileContentManagementSystem/. A primary drive must be mounted to carryout this operation. \n\n'
+    print '4. Switch Local Backup and Offsite Backup: This switches which drive is the Local Backup and Offsite Backup.  This operation will always carry out if selected. \n\n'
+    print '5. Switch Primary Drive: Switching the primary drive to either the Local Backup or Offsite Backup. The new Primary drive must have at least the latest modification date.  If operation does not take place, a synchronization and switching of drives might have to occur first before the Primary can be swapped out. This is to ensure that no data will be lost during the synchronization process.\n\n'
+    print '6. Display Drive Info: Shows that each of the drives in the system is currently listed as.  Reads the configuration file for this information.\n\n'
     print 'Ctrl-c exits the program. Help can be displayed by typing h, H, help, or Help.'
-    print 'While in the middle of a command you can quit the command by typing either e, E, exit, Exit, Q, q, quit, or Quit'
+    print 'While in the middle of a command you can quit the command by typing either e, E, exit, Exit, Q, q, quit, or Quit. \n\n\n\n'
     print 'The Large File Content Management System was designed by Dylan Zingler, dzingler@arinc.com January 2015.'
 
 def command_settings():
@@ -528,15 +553,27 @@ q to quit command
         # Email Configuration
         if command == str(1):
             print "Configuring Email.  An email is sent after synchronization by LFCMS"
-            to = raw_input("Enter An Email Address To Send To: ")            
-            while not re.match(r"[^@]+@[^@]+\.[^@]+", to):
-                if to in {'e', 'Exit', 'E', 'Q', 'q', 'quit', 'Quit', 'exit'}:
-                    print "Quitting Settings"
-                    return   
-                print "  Error Email Entered Is not Formatted correctly. Be sure to include @ sign"                
-                to = raw_input("Enter An Email Address To Send To: ")
+            to_e = []
+            to = raw_input("Enter Email Addresses To Send To (type Done to finish entering addresses to send to): ")
+            while not to == 'Done':                                
+                while not re.match(r"[^@]+@[^@]+\.[^@]+", to):
+                    if to in {'e', 'Exit', 'E', 'Q', 'q', 'quit', 'Quit', 'exit'}:
+                        print "Quitting Settings"
+                        return   
+                    print "  Error Email Entered Is not Formatted correctly. Be sure to include @ sign"                
+                    to = raw_input("Enter An Email Address To Send To: ")
+                
+                if not to == 'Done':                
+                    to_e.append(to)                
+                
+                to = raw_input("Enter Another Email Address To Send To (type Done to finish entering addresses to send to): ")
+                
+                
+                
+            to_emails = to_e
+                
             from_ = raw_input("Enter An Email Address To Send From (Must Be an Arinc Email Address): ")
-            while not (re.match(r"[^@]+@[^@]+\.[^@]+", to) and from_[-len('@arinc.com'):] == '@arinc.com'):
+            while not (re.match(r"[^@]+@[^@]+\.[^@]+", from_) and from_[-len('@arinc.com'):] == '@arinc.com'):
                 if from_ in {'e', 'Exit', 'E', 'Q', 'q', 'quit', 'Quit', 'exit'}:
                     print "Quitting Settings"
                     return           
@@ -544,10 +581,10 @@ q to quit command
                 from_ = raw_input("Enter An Email Address To Send From (Must Be an Arinc Email Address): ")
                 
              
-            config['email']['to_email'] = to
+            config['email']['to_emails'] = to_e
             config['email']['from_email'] = from_
             config.write()    
-            print "Changed To Email Address to: " + to + ' and From Email Address to: ' + from_
+            print "Changed To Email Addresses to: " + str(to_e) + ' and From Email Address to: ' + from_
             
         command_settings()
         
