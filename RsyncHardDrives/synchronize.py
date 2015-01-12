@@ -226,33 +226,36 @@ This page documents the Large File Content Management System which is used for b
 Information taken from the configuration file [[BR]]
 %s
 ---------------------------------------
-[[Image(https://raw.githubusercontent.com/zinglax/RsyncHardDrives/master/RsyncHardDrives/LFCMS.png)]]
 
 == Documentation ==
+
 The Large File Content Management System (LFCMS) is a tool that keeps large files backed up on a group of 3 different drives.  Within a group, there are 3 different 'Roles' that a drive can have; 1. Primary, 2. Local Backup, 3. Offsite Backup.  The purpose of the Primary drive is to have the latest files/information intended to be stored/backed-up with the system. 
 [[BR]][[BR]]
-The Primary drive is the only drive that should ever be written to.  This drive is one that will copy its data to the other drives in the system.  
+=== Hard Drive Roles ===
+The ''Primary drive'' is the only drive that should ever be written to.  This drive is one that will copy its data to the other drives in the system.  
 [[BR]][[BR]]
-The Local Backup drive is on site and intended to be a complete backup of the primary (after synchronization takes place).  Reading or copying files off of this drive will not interfere with the LFMS life cycle.  Writing to this drive will result in that new data being overwritten/deleted with information from the Primary drive. DO NOT WRITE DATA TO THE LOCAL BACKUP OR OFFSITE BACKUP, DATA WILL BE LOST. 
+The ''Local Backup drive'' is on site and intended to be a complete backup of the primary (after synchronization takes place).  Reading or copying files off of this drive will not interfere with the LFMS life cycle.  Writing to this drive will result in that new data being overwritten/deleted with information from the Primary drive. DO NOT WRITE DATA TO THE LOCAL BACKUP OR OFFSITE BACKUP, DATA WILL BE LOST. 
 [[BR]][[BR]]
-The Offsite Backup functions like the Local Backup in the sense that they will both be copies of what is on the Primary drive. The Offsite backup and Local Backup will be swapped out for each other periodically in order to keep the data in sync.  The roles of the drives must be changed at this point in order to run the synchronization.  Only the drive whose role is Local Backup can be synchronized with the Primary.
+The ''Offsite Backup'' functions like the Local Backup in the sense that they will both be copies of what is on the Primary drive. The Offsite backup and Local Backup will be swapped out for each other periodically in order to keep the data in sync.  The roles of the drives must be changed at this point in order to run the synchronization.  Only the drive whose role is Local Backup can be synchronized with the Primary.
 [[BR]][[BR]]
-'''README.txt Files'''
-[[BR]]
+=== README.txt Files ===
 For information to show in the 'Notes' section in the files and directories tables, a README.txt file must be present in the same directory as that directory or file.  The README.txt file must be prefixed with a period and the complete name of the file or directory you are trying to document.
-[[BR]]
+[[BR]][[BR]]
 '''Example:'''
 [[BR]]
 ''File Name'' = eTechLog.ova
 [[BR]]
 ''README File Name'' = eTechLog.ova.README.txt
-[[BR]]
+[[BR]][[BR]]
 ''Directory Name'' = AeroSync2E4/
 [[BR]]
 ''README File Name'' = AeroSync2E4.README.txt (NOTE: This file must be located on the same level as the directory it is describing.  The README.txt must have the same parent folder as the file it describes.)
 [[BR]][[BR]]
 The README.txt file must contain a line starting with Description: and must be at most one line of the file.  This part of the README.txt will be displayed under the 'Notes' section in the file and directories tables. 
 
+=== Running LFCMS ===
+LFCMS is located on the HP touch screen closest to the windows. The Hostname for this computer is eenabled-HP-Pavilion-TS-23-f260xt-AiO-PC, Username is eenabled, and Password is gatelink. Once at this computer you should see an Icon in the unity launcher side bar that looks like this
+[[Image(https://raw.githubusercontent.com/zinglax/RsyncHardDrives/master/RsyncHardDrives/LFCMS.png)]]. When double-clicked you should see a terminal open and running the LFCMS tool. 
 """
     
     
