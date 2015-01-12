@@ -20,8 +20,20 @@ try:
 except IndexError:
     print 'failed to login. Exiting Program'
     time.sleep(2.5)
-    sys.exit()
- 
+    sys.exit()    
+
+def get_group_letters():
+    letters = []
+    for d in hard_drives:
+        letters.append(hard_drives[d][2])
+    return set(letters)    
+
+def group_letter_inputs():
+    letters = get_group_letters()
+    for l in list(letters)[:]:
+        letters.add(l.lower())
+        letters.add(l.upper())
+    return set(letters)        
     
 def get_mounted_drives():
     ''' checks which drives are mounted'''
@@ -147,16 +159,10 @@ def synchronize_hard_drives(primary_drive, local_backup_drive):
     return return_val
    
 def switch_primary_drive(group_letter):
-    if group_letter in {'a', 'A'}:
-        group_letter = "A"
-        local_backup = get_role_for_group('A', 'local_backup')
-        offsite_backup = get_role_for_group('A', 'offsite_backup')
-        primary = get_role_for_group('A', 'primary')
-    else:
-        group_letter = "B"
-        local_backup = get_role_for_group('B', 'local_backup')
-        offsite_backup = get_role_for_group('B', 'offsite_backup')
-        primary = get_role_for_group('B', 'primary')
+    group_letter = group_letter.upper()
+    local_backup = get_role_for_group(group_letter, 'local_backup')
+    offsite_backup = get_role_for_group(group_letter, 'offsite_backup')
+    primary = get_role_for_group(group_letter, 'primary')
         
     print '   CURRENT PRIMARY IS ' + primary
     print '   1. Local Backup: ' + local_backup
@@ -208,12 +214,12 @@ def update_wiki(wiki_drive):
 This page documents the Large File Content Management System which is used for backing-up/synchronizing hard drives (mainly the two 2TB hard drives for the project stored locally and the third offsite_backup). 
 
 ------------------------------
-
-== [wiki:LargeFileContentManagementSystem/GrpA Group A] == 
-
-
-== [wiki:LargeFileContentManagementSystem/GrpB Group B] == 
-
+"""
+    
+    for l in get_group_letters():
+        LargeFileContentManagementSystem_HomePage += "== [wiki:LargeFileContentManagementSystem/Grp%s Group %s] ==\n\n" % (l , l)
+    
+    LargeFileContentManagementSystem_HomePage += """    
 
 --------------------------------------
 == Drives Table ==
@@ -269,10 +275,7 @@ The README.txt file must contain a line starting with Description: and must be a
     # Creating all of the Directory pages for selected drive
     mounted = get_mounted_drives()[0]
     if wiki_drive in mounted:
-        if hard_drives[wiki_drive][2] == "A":
-            folder_name = "GrpA"
-        else:
-            folder_name = "GrpB"
+        folder_name = "Grp" + hard_drives[wiki_drive][2].upper()
         
         path = hard_drives[wiki_drive][1]
         update_wiki_helper(path, folder_name)
@@ -315,10 +318,7 @@ def update_wiki_helper(path, folder_name): # TODO
     # Creates the Wiki Page Name
     for drive in hard_drives:
         if hard_drives[drive][1] in path:
-            if hard_drives[drive][2] == "A":
-                page_name = path.replace(hard_drives[drive][1], "LargeFileContentManagementSystem/GrpA")
-            else:
-                page_name = path.replace(hard_drives[drive][1], "LargeFileContentManagementSystem/GrpB")
+            page_name = path.replace(hard_drives[drive][1], "LargeFileContentManagementSystem/Grp"+ hard_drives[drive][2])
 
     # Create Files Table
     if not len(files) == 0:
@@ -392,12 +392,9 @@ def send_email(to_emails, from_email, msg):
     return "Sent Email"
 
 def switch_local_backup_offsite_backup(group_letter):
-    if group_letter in {'a', 'A'}:
-        local_backup = get_role_for_group('A', 'local_backup')
-        offsite_backup = get_role_for_group('A', 'offsite_backup')
-    else:
-        local_backup = get_role_for_group('B', 'local_backup')
-        offsite_backup = get_role_for_group('B', 'offsite_backup')
+    group_letter = group_letter.upper()
+    local_backup = get_role_for_group(group_letter, 'local_backup')
+    offsite_backup = get_role_for_group(group_letter, 'offsite_backup')
     
     hard_drives[local_backup][0] = 'offsite_backup'
     hard_drives[offsite_backup][0] = 'local_backup'
@@ -499,15 +496,16 @@ def command_update_wiki_pages():
         print "   Exiting Command"
 
 def command_switch_local_backup_and_offsite_backup():
-    group_letter = input_command("   ENTER A GROUP LETTER (A OR B): ", {"A", "a","B","b"})    
+    prompt = "    ENTER A GROUP LETTER (" + ', '.join(get_group_letters()) + "): "
+    group_letter = input_command(prompt, group_letter_inputs())    
     if  not group_letter == 'exit':
         switch_local_backup_offsite_backup(group_letter)    
     else:
         print "   Exiting Command"
 
 def command_switch_primary_drive():
-    
-    group_letter = input_command("   ENTER A GROUP LETTER (A OR B): ", {"A", "a","B","b"})    
+    prompt = "    ENTER A GROUP LETTER (" + ', '.join(get_group_letters()) + "): "
+    group_letter = input_command(prompt, group_letter_inputs())    
     if  not group_letter == 'exit':
         switch_primary_drive(group_letter)    
     else:
@@ -542,14 +540,16 @@ def command_settings():
     print """
 1. Email Settings
 
+2. Add New Hard Drve Group
+
 q to quit command
     """
     
-    command = input_command(" Please Select A Number To Configure: ", {'1'})
+    command = input_command(" Please Select A Number To Configure: ", {'1','2'})
     
     if command == 'exit':
         return
-    else:
+    elif command == '1':
         # Email Configuration
         if command == str(1):
             print "Configuring Email.  An email is sent after synchronization by LFCMS"
@@ -567,9 +567,7 @@ q to quit command
                     to_e.append(to)                
                 
                 to = raw_input("Enter Another Email Address To Send To (type Done to finish entering addresses to send to): ")
-                
-                
-                
+         
             to_emails = to_e
                 
             from_ = raw_input("Enter An Email Address To Send From (Must Be an Arinc Email Address): ")
@@ -579,15 +577,26 @@ q to quit command
                     return           
                 print "  Error Email Entered Is not Formatted correctly. Be sure to include @ sign and that it is an arinc email address (@arinc.com)"                
                 from_ = raw_input("Enter An Email Address To Send From (Must Be an Arinc Email Address): ")
-                
-             
+                             
             config['email']['to_emails'] = to_e
             config['email']['from_email'] = from_
             config.write()    
             print "Changed To Email Addresses to: " + str(to_e) + ' and From Email Address to: ' + from_
-            
-        command_settings()
         
+    elif command == '2':
+        print """  Steps for adding a New Hard Drive Group
+1. Reformat 3 Hard Drives to ntfs and label partitions Grp'Group_Letter'Drv'Drive_Number' 
+
+Ex. Group_Letter = C, Drive_number 1, label for specific drive is GrpCDrv1 (note drive number must be either 1, 2 or 3)
+
+2. Open hard_drive_roles.ini file located in same directory as synchronize.py and add to the hard_drive section 3 new entries reflecting the new drives you are adding
+
+3. Besure that the 3 entries have unique drive numbers, mount points, and roles (primary, local_backup, or offsite_backup). Enter 0 for last synchronized data.  
+
+4. Test in Wing the new hard drive group out so that you can see error output if any. Once all functionality seems to be working the group has been added
+"""
+            
+    command_settings()        
 
 def input_command(prompt, accepted_values):
     ''' Method for taking in input from user'''
@@ -641,5 +650,4 @@ if __name__=="__main__":
         else:
             print '                                                      '   
             print '   ERROR: Command not recognized. Try again'
-        command = output_prompt_commands()
-        
+        command = output_prompt_commands()        
